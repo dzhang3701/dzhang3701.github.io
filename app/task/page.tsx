@@ -419,7 +419,7 @@ STRATEGY GUIDELINES:
 
       <div className="max-w-[1800px] mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - System Prompt and Hypothesis */}
+          {/* Left Column - System Prompt and Query */}
           <div className="space-y-6">
             {/* System Prompt */}
             <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
@@ -433,6 +433,94 @@ STRATEGY GUIDELINES:
                 <div className={`text-xs font-mono ${colors.secondaryClass} mb-2`}>// SYSTEM</div>
                 <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{systemPrompt}</pre>
               </div>
+            </div>
+
+            {/* Query Interface */}
+            {!taskCompleted && queriesRemaining > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                  <span className="text-xs font-mono text-gray-400">query.input</span>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    {queryInputs.map((input, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
+                          {String(queriesUsed + idx + 1).padStart(3, '0')}
+                        </div>
+                        <input
+                          type="text"
+                          value={input}
+                          onChange={(e) => {
+                            const newInputs = [...queryInputs];
+                            newInputs[idx] = e.target.value;
+                            setQueryInputs(newInputs);
+                          }}
+                          onKeyPress={handleKeyPress}
+                          className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
+                          placeholder={taskData.input_spec}
+                        />
+                      </div>
+                    ))}
+                    <button
+                      onClick={handleQuery}
+                      className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
+                    >
+                      <span>Execute Query</span>
+                      <span className="text-xs opacity-60">[Enter]</span>
+                      <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Top Row - Samples and History side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Sample Cases */}
+              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                  <span className="text-xs font-mono text-gray-400">samples.txt</span>
+                </div>
+                <div className="p-3 max-h-64 overflow-y-auto">
+                  <div className={`text-xs font-mono ${colors.successClass} mb-2`}>// USER</div>
+                  <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{sampleCasesMessage}</pre>
+                </div>
+              </div>
+
+              {/* Query History */}
+              {queryHistory.length > 0 ? (
+                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                    <span className="text-xs font-mono text-gray-400">query_history.log</span>
+                  </div>
+                  <div className="p-3 max-h-64 overflow-y-auto">
+                    <div className="space-y-1">
+                      {queryHistory.map((result, idx) => (
+                        <div key={idx} className="font-mono text-xs">
+                          <span className="text-gray-500">{String(idx + 1).padStart(3, '0')}</span>
+                          <span className="text-gray-600 mx-1">│</span>
+                          <span className={colors.primaryClass}>{result.input}</span>
+                          <span className="text-gray-600 mx-1">→</span>
+                          <span className={colors.successClass}>{JSON.stringify(result.output)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                    <span className="text-xs font-mono text-gray-400">query_history.log</span>
+                  </div>
+                  <div className="p-3 max-h-64 flex items-center justify-center">
+                    <span className="text-xs font-mono text-gray-600">No queries yet</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Hypothesis Submission */}
@@ -513,97 +601,6 @@ STRATEGY GUIDELINES:
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Top Row - Samples and History side by side */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Sample Cases */}
-              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-mono text-gray-400">samples.txt</span>
-                </div>
-                <div className="p-3 max-h-64 overflow-y-auto">
-                  <div className={`text-xs font-mono ${colors.successClass} mb-2`}>// USER</div>
-                  <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{sampleCasesMessage}</pre>
-                </div>
-              </div>
-
-              {/* Query History */}
-              {queryHistory.length > 0 ? (
-                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                    <span className="text-xs font-mono text-gray-400">query_history.log</span>
-                  </div>
-                  <div className="p-3 max-h-64 overflow-y-auto">
-                    <div className="space-y-1">
-                      {queryHistory.map((result, idx) => (
-                        <div key={idx} className="font-mono text-xs">
-                          <span className="text-gray-500">{String(idx + 1).padStart(3, '0')}</span>
-                          <span className="text-gray-600 mx-1">│</span>
-                          <span className={colors.primaryClass}>{result.input}</span>
-                          <span className="text-gray-600 mx-1">→</span>
-                          <span className={colors.successClass}>{JSON.stringify(result.output)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                    <span className="text-xs font-mono text-gray-400">query_history.log</span>
-                  </div>
-                  <div className="p-3 max-h-64 flex items-center justify-center">
-                    <span className="text-xs font-mono text-gray-600">No queries yet</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom - Interaction */}
-            <div className="space-y-6">
-              {/* Query Interface */}
-              {!taskCompleted && queriesRemaining > 0 && (
-                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                    <span className="text-xs font-mono text-gray-400">query.input</span>
-                  </div>
-                  <div className="p-4">
-                    <div className="space-y-3">
-                      {queryInputs.map((input, idx) => (
-                        <div key={idx} className="relative">
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
-                            {String(queriesUsed + idx + 1).padStart(3, '0')}
-                          </div>
-                          <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => {
-                              const newInputs = [...queryInputs];
-                              newInputs[idx] = e.target.value;
-                              setQueryInputs(newInputs);
-                            }}
-                            onKeyPress={handleKeyPress}
-                            className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
-                            placeholder={taskData.input_spec}
-                          />
-                        </div>
-                      ))}
-                      <button
-                        onClick={handleQuery}
-                        className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
-                      >
-                        <span>Execute Query</span>
-                        <span className="text-xs opacity-60">[Enter]</span>
-                        <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
