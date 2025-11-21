@@ -36,6 +36,7 @@ export default function TaskPage() {
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [correctRule, setCorrectRule] = useState<string>('');
+  const [lastActionWasHypothesis, setLastActionWasHypothesis] = useState(false);
 
   const colors = theme === 'cyan'
     ? {
@@ -60,25 +61,25 @@ export default function TaskPage() {
       successBgStrong: 'bg-emerald-900/50',
     }
     : {
-      primary: 'orange',
-      primaryClass: 'text-orange-300',
-      primaryBg: 'bg-orange-800',
-      primaryBgHover: 'hover:bg-orange-700',
-      primaryBorder: 'border-orange-700',
-      primaryRing: 'focus:ring-orange-700',
-      secondary: 'amber',
-      secondaryClass: 'text-amber-300',
-      secondaryBg: 'bg-amber-800',
-      secondaryBgHover: 'hover:bg-amber-700',
-      secondaryBorder: 'border-amber-700',
-      secondaryRing: 'focus:ring-amber-700',
+      primary: 'red',
+      primaryClass: 'text-red-400',
+      primaryBg: 'bg-red-600',
+      primaryBgHover: 'hover:bg-red-500',
+      primaryBorder: 'border-red-500',
+      primaryRing: 'focus:ring-red-500',
+      secondary: 'orange',
+      secondaryClass: 'text-orange-400',
+      secondaryBg: 'bg-orange-600',
+      secondaryBgHover: 'hover:bg-orange-500',
+      secondaryBorder: 'border-orange-500',
+      secondaryRing: 'focus:ring-orange-500',
       success: 'yellow',
-      successClass: 'text-yellow-300',
-      successBg: 'bg-yellow-500/10',
-      successBorder: 'border-yellow-700/40',
-      successBgFull: 'bg-yellow-950/30',
-      successBorderFull: 'border-yellow-700/40',
-      successBgStrong: 'bg-yellow-900/30',
+      successClass: 'text-yellow-400',
+      successBg: 'bg-yellow-500/20',
+      successBorder: 'border-yellow-500/50',
+      successBgFull: 'bg-yellow-900/40',
+      successBorderFull: 'border-yellow-500/50',
+      successBgStrong: 'bg-yellow-800/50',
     };
 
   useEffect(() => {
@@ -148,18 +149,21 @@ export default function TaskPage() {
   const handleTimerExpired = () => {
     if (!taskData) return;
 
-    // Record failed query
-    setFailedQueries(prev => prev + 1);
-    setQueriesUsed(prev => prev + 1);
+    const batchSize = taskData.query_batch_size;
 
-    // Add to history with failed marker
-    setQueryHistory(prev => [...prev, {
+    // Record failed queries - count entire batch as failed
+    setFailedQueries(prev => prev + batchSize);
+    setQueriesUsed(prev => prev + batchSize);
+
+    // Add to history with failed marker for the entire batch
+    const timeoutEntries = Array(batchSize).fill(null).map(() => ({
       input: '[TIMEOUT]',
       output: 'Query timed out - no query made'
-    }]);
+    }));
+    setQueryHistory(prev => [...prev, ...timeoutEntries]);
 
     // Clear inputs and reset timer
-    setQueryInputs(new Array(taskData.query_batch_size).fill(''));
+    setQueryInputs(new Array(batchSize).fill(''));
     setTimeRemaining(60);
   };
 
@@ -198,6 +202,9 @@ export default function TaskPage() {
       setQueryInputs(new Array(taskData.query_batch_size).fill(''));
       setTimeRemaining(60);
 
+      // Allow hypothesis submission after query
+      setLastActionWasHypothesis(false);
+
     } catch (err) {
       console.error('Query error:', err);
       alert('Failed to process query. Please try again.');
@@ -229,13 +236,18 @@ export default function TaskPage() {
         return;
       }
 
+      // Mark that hypothesis was submitted
+      setLastActionWasHypothesis(true);
+
+      // Show result - hide detailed explanation if incorrect
       setEvaluationResult({
         success: data.success,
-        explanation: data.explanation
+        explanation: data.success ? data.explanation : 'Incorrect hypothesis. Try making more queries to refine your understanding.'
       });
 
-      // End immediately if successful
-      if (data.task_complete) {
+      // End immediately if successful OR if queries exhausted
+      const queriesRemaining = taskData.total_queries - queriesUsed;
+      if (data.success || queriesRemaining === 0) {
         setTaskCompleted(true);
       } else {
         setHypothesis('');
@@ -330,7 +342,7 @@ STRATEGY GUIDELINES:
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-3">
         <div className="flex justify-between items-center max-w-[1800px] mx-auto">
           <div className="flex items-center gap-4">
-            <div className={`${colors.primaryClass} font-mono text-lg`}>Black Box Hypothesis Evaluation</div>
+            <div className={`${colors.primaryClass} font-mono text-lg`}>Black Box Hypothesis Testing</div>
             <div className="text-gray-500">|</div>
             <div className="text-gray-400 text-sm font-mono">{userName}</div>
           </div>
@@ -398,10 +410,10 @@ STRATEGY GUIDELINES:
                   />
                   <button
                     onClick={handleSubmitHypothesis}
-                    disabled={submitting || !hypothesis.trim()}
+                    disabled={submitting || !hypothesis.trim() || (lastActionWasHypothesis && queriesRemaining > 0)}
                     className={`mt-3 w-full ${colors.secondaryBg} ${colors.secondaryBgHover} disabled:bg-gray-700 disabled:text-gray-500 text-gray-100 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
                   >
-                    <span>{submitting ? 'Evaluating...' : 'Submit Hypothesis'}</span>
+                    <span>{submitting ? 'Evaluating...' : lastActionWasHypothesis && queriesRemaining > 0 ? 'Make a query first' : 'Submit Hypothesis'}</span>
                     <span className="text-xs opacity-60">[Cmd+Enter]</span>
                   </button>
                 </div>
@@ -411,12 +423,12 @@ STRATEGY GUIDELINES:
             {/* Evaluation Result */}
             {evaluationResult && (
               <div className={`border rounded-lg overflow-hidden ${evaluationResult.success
-                  ? `${colors.successBgFull} ${colors.successBorderFull}`
-                  : 'bg-red-950/50 border-red-500/50'
+                ? `${colors.successBgFull} ${colors.successBorderFull}`
+                : 'bg-red-950/50 border-red-500/50'
                 }`}>
                 <div className={`px-4 py-2 border-b ${evaluationResult.success
-                    ? `${colors.successBgStrong} ${colors.successBorderFull}`
-                    : 'bg-red-900/50 border-red-500/50'
+                  ? `${colors.successBgStrong} ${colors.successBorderFull}`
+                  : 'bg-red-900/50 border-red-500/50'
                   }`}>
                   <span className={`text-xs font-mono ${evaluationResult.success ? colors.successClass : 'text-red-400'
                     }`}>
