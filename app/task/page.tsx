@@ -262,10 +262,11 @@ export default function TaskPage() {
     }
   };
 
-  const handleEndTask = async () => {
+  const handleNextTask = async () => {
     if (!taskData) return;
 
     try {
+      // End current task
       await fetch(`${API_URL}/api/end-task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -277,7 +278,48 @@ export default function TaskPage() {
       console.error('Error ending task:', err);
     }
 
-    router.push('/');
+    // Reset all state
+    setTaskCompleted(false);
+    setQueryHistory([]);
+    setQueriesUsed(0);
+    setFailedQueries(0);
+    setHypothesis('');
+    setEvaluationResult(null);
+    setLastActionWasHypothesis(false);
+    setTimeRemaining(60);
+    setLoading(true);
+
+    // Load a new task
+    try {
+      const tasksRes = await fetch('/tasks.json');
+      const tasks = await tasksRes.json();
+      const allTasks = [...tasks.numerical, ...tasks.lexical];
+      const randomTask = allTasks[Math.floor(Math.random() * allTasks.length)];
+
+      const category = tasks.numerical.some((t: any) => t.id === randomTask.id)
+        ? 'numerical'
+        : 'lexical';
+
+      const res = await fetch(`${API_URL}/api/start-task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_name: userName,
+          task_id: randomTask.id,
+          task_category: category
+        })
+      });
+
+      const data = await res.json();
+      setTaskData(data);
+      setCorrectRule(data.rule_description);
+      setQueryInputs(new Array(data.query_batch_size).fill(''));
+      setLoading(false);
+    } catch (err) {
+      console.error('Error starting next task:', err);
+      alert('Failed to start next task. Please try again.');
+      router.push('/');
+    }
   };
 
   if (loading) {
@@ -462,10 +504,10 @@ STRATEGY GUIDELINES:
 
                   <div className="flex justify-center">
                     <button
-                      onClick={handleEndTask}
-                      className="bg-gray-700 hover:bg-gray-600 text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors"
+                      onClick={handleNextTask}
+                      className={`${colors.primaryBg} ${colors.primaryBgHover} text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors`}
                     >
-                      Exit
+                      Next Task →
                     </button>
                   </div>
                 </div>
