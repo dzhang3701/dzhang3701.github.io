@@ -253,8 +253,8 @@ Your goal is to discover the hidden rule by making strategic queries. The hidden
 You'll learn through observation - each query reveals the output for that input.
 
 STRATEGY GUIDELINES:
-- Start by querying a wide set of examples to find patterns about the function
-- Convert patterns into a set of hypotheses about the structure of the function
+- Start by querying a wide set of examples to gather information about the function
+- Convert observations into a set of hypotheses about the structure of the function
 - Refine your hypotheses with strategic queries
 - Actively seek disconfirming evidence
 - When you think you know the rule, test corner cases that could break it
@@ -288,7 +288,7 @@ STRATEGY GUIDELINES:
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-3">
         <div className="flex justify-between items-center max-w-[1800px] mx-auto">
           <div className="flex items-center gap-4">
-            <div className={`${colors.primaryClass} font-mono text-lg`}>Pattern Discovery</div>
+            <div className={`${colors.primaryClass} font-mono text-lg`}>Black Box Hypothesis Evaluation</div>
             <div className="text-gray-500">|</div>
             <div className="text-gray-400 text-sm font-mono">{userName}</div>
           </div>
@@ -340,7 +340,7 @@ STRATEGY GUIDELINES:
                     onKeyDown={handleHypothesisKeyPress}
                     className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.secondaryBorder} focus:ring-1 ${colors.secondaryRing} resize-none`}
                     rows={6}
-                    placeholder="Describe the pattern you've discovered..."
+                    placeholder="Describe the rule you've discovered..."
                   />
                   <button
                     onClick={handleSubmitHypothesis}

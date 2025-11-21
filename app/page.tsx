@@ -43,10 +43,10 @@ export default function Home() {
         {/* Header */}
         <div className="text-center space-y-3">
           <h1 className={`text-4xl font-bold font-mono text-transparent bg-clip-text bg-gradient-to-r ${gradientColors}`}>
-            Pattern Discovery
+            Black Box Hypothesis Evaluation
           </h1>
           <p className="text-gray-400 font-mono text-sm">
-            Discover hidden patterns through strategic queries
+            Discover hidden rules through strategic queries
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export default function Home() {
           </div>
           <div className="p-4">
             <div className="space-y-2 text-sm font-mono text-gray-400">
-              <div><span className={primaryClass}>→</span> Random pattern will be assigned</div>
+              <div><span className={primaryClass}>→</span> Random rule will be assigned</div>
               <div><span className={primaryClass}>→</span> Query inputs to observe outputs</div>
               <div><span className={primaryClass}>→</span> Submit hypothesis when ready</div>
               <div><span className={primaryClass}>→</span> Task ends when hypothesis is correct</div>
