@@ -43,7 +43,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center space-y-3">
           <h1 className={`text-4xl font-bold font-mono text-transparent bg-clip-text bg-gradient-to-r ${gradientColors}`}>
-            Black Box Hypothesis Evaluation
+            Black Box Hypothesis Testing
           </h1>
           <p className="text-gray-400 font-mono text-sm">
             Discover hidden rules through strategic queries

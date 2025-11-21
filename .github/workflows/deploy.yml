@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
 
       - name: Install dependencies
@@ -27,8 +27,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: https://black-box-hypothesis-evaluation-production.up.railway.app
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

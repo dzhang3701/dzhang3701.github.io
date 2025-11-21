@@ -1,14 +1,30 @@
 """Grade human hypotheses using the helper model."""
-import sys
-import os
-from pathlib import Path
-
-# Add parent directory to path
-parent_dir = Path(__file__).parent.parent.parent
-sys.path.append(str(parent_dir))
 
 from inspect_ai.model import get_model, ChatMessageSystem, ChatMessageUser
-from config import HELPER_MODEL
+
+# Use Gemini 2.5 Flash for rigorous grading
+HELPER_MODEL = "google/gemini-2.5-flash"
+
+
+def _format_pairs(title: str, pairs) -> str:
+    """Format dict or list pairs for the grading prompt."""
+    if not pairs:
+        return f"{title}: none provided."
+
+    lines = [f"{title}:"]
+    if isinstance(pairs, dict):
+        iterable = pairs.items()
+    else:
+        iterable = pairs
+
+    for item in iterable:
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            inp, out = item
+            lines.append(f"- {inp} → {out}")
+        else:
+            lines.append(f"- {item}")
+
+    return "\n".join(lines)
 
 
 async def grade_hypothesis(
@@ -16,7 +32,7 @@ async def grade_hypothesis(
     correct_description: str,
     test_cases: dict,
     sample_cases: dict = None,
-    query_history: list = None
+    query_history: list = None,
 ) -> dict:
     """Grade a human's hypothesis using the helper model.
 
@@ -35,36 +51,49 @@ async def grade_hypothesis(
 
     # Create the grading prompt
     system_prompt = ChatMessageSystem(
-        content="You are grading whether a human has correctly identified a pattern/rule. "
-        "Your job is to determine if their hypothesis correctly describes the rule, "
-        "even if their wording is different from the official description. "
-        "Focus on semantic correctness, not exact wording."
+        content=(
+            "You are a strict grader verifying whether the human's hypothesis exactly matches the official rule. "
+            "Use the rule description and all provided cases. Reject vague or generic claims that do not fully explain the mechanism."
+        )
     )
 
-    user_prompt_text = f"""Task: Determine if the human correctly identified the pattern.
+    sample_block = _format_pairs("Sample cases", sample_cases)
+    test_block = _format_pairs("Held-out test cases", test_cases)
+    query_block = _format_pairs("Human query history", query_history)
 
-Official Rule Description: {correct_description}
-
-Human's Hypothesis: {hypothesis}
-
-Test Cases (showing the correct pattern):
-{chr(10).join([f"{k} → {v}" for k, v in list(test_cases.items())[:10]])}
-"""
-
-    if sample_cases:
-        user_prompt_text += f"\n\nSample Cases (shown to human):\n{chr(10).join([f'{k} → {v}' for k, v in sample_cases.items()])}"
-
-    if query_history:
-        user_prompt_text += f"\n\nHuman's Query History (showing their exploration):\n{chr(10).join([f'{inp} → {out}' for inp, out in query_history[:20]])}"
-
-    user_prompt_text += "\n\nDoes the human's hypothesis correctly describe the rule? Respond with YES or NO, followed by a brief explanation."
+    user_prompt_text = (
+        "Determine if the hypothesis is correct.\n\n"
+        f"Official rule: {correct_description}\n"
+        f"Hypothesis: {hypothesis}\n\n"
+        f"{sample_block}\n\n"
+        f"{test_block}\n\n"
+        f"{query_block}\n\n"
+        "Grading guidelines:\n"
+        "- Accept only if the hypothesis would reproduce all outputs above AND fully matches the official rule.\n"
+        "- Reject vague references like \"the correct rule\" or descriptions that could fit multiple patterns.\n"
+        "- Semantic equivalents with clear logic are acceptable.\n\n"
+        "Answer format: respond with YES or NO as the first word, followed by a short justification."
+    )
 
     user_prompt = ChatMessageUser(content=user_prompt_text)
 
     # Get the model's response
     response = await model.generate([system_prompt, user_prompt])
 
-    response_text = str(response.message.content).strip()
+    # Extract text from response (handle ContentText objects and lists)
+    content = response.message.content
+    if isinstance(content, list) and len(content) > 0:
+        # Handle list of ContentText objects
+        if hasattr(content[0], "text"):
+            response_text = content[0].text.strip()
+        else:
+            response_text = str(content[0]).strip()
+    elif hasattr(content, "text"):
+        response_text = content.text.strip()
+    elif isinstance(content, str):
+        response_text = content.strip()
+    else:
+        response_text = str(content).strip()
 
     # Parse the response
     success = response_text.upper().startswith("YES")
@@ -72,7 +101,7 @@ Test Cases (showing the correct pattern):
     return {
         "success": success,
         "explanation": response_text,
-        "raw_response": response_text
+        "raw_response": response_text,
     }
 
 
@@ -85,7 +114,7 @@ if __name__ == "__main__":
             hypothesis="Returns 1 if the number is prime, otherwise 0",
             correct_description="1 if prime, 0 otherwise",
             test_cases={"2": 1, "3": 1, "4": 0, "5": 1, "6": 0},
-            sample_cases={"7": 1, "9": 0}
+            sample_cases={"7": 1, "9": 0},
         )
         print(result)
 

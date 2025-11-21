@@ -168,7 +168,7 @@ def submit_hypothesis():
 
     session = sessions[session_id]
 
-    # Grade the hypothesis
+    # Grade the hypothesis using LLM
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
