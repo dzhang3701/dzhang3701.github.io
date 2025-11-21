@@ -55,14 +55,15 @@ Since GitHub Pages only hosts static files, you need to deploy the Flask backend
 
 1. Install Railway CLI: `npm i -g @railway/cli`
 2. Login: `railway login`
-3. From the `human_baseline/backend` directory:
+3. From the **project root** directory:
 ```bash
-cd backend
+cd /path/to/black-box-hypothesis-testing
 railway init
 railway up
 ```
-4. Get your backend URL from Railway dashboard
-5. Update `.env.production` with this URL
+4. Railway will use the `railway.json` config to build and deploy the backend
+5. Get your backend URL from Railway dashboard (e.g., `https://your-app.railway.app`)
+6. Update `human_baseline/.env.production` with this URL
 
 ### Option 2: Render (Free tier available)
 
