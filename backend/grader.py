@@ -52,8 +52,9 @@ async def grade_hypothesis(
     # Create the grading prompt
     system_prompt = ChatMessageSystem(
         content=(
-            "You are a strict grader verifying whether the human's hypothesis exactly matches the official rule. "
-            "Use the rule description and all provided cases. Reject vague or generic claims that do not fully explain the mechanism."
+            "You are a careful but fair grader verifying whether the human's hypothesis matches the official rule. "
+            "Use the rule description and all provided cases. Accept concise descriptions when they unambiguously describe the same rule "
+            "even if they only name the underlying concept (e.g., \"primality\" for a prime/composite rule)."
         )
     )
 
@@ -69,8 +70,9 @@ async def grade_hypothesis(
         f"{test_block}\n\n"
         f"{query_block}\n\n"
         "Grading guidelines:\n"
-        "- Accept only if the hypothesis would reproduce all outputs above AND fully matches the official rule.\n"
-        "- Reject vague references like \"the correct rule\" or descriptions that could fit multiple patterns.\n"
+        "- Accept whenever the hypothesis would reproduce all outputs AND clearly refers to the exact rule, even if the wording is brief.\n"
+        "- Reject responses that are vacuous (e.g., \"the right rule\") or clearly inconsistent with the official rule.\n"
+        "- Treat exact references to the governing concept (like \"primality\" or \"parity\") as sufficient when that concept uniquely specifies the behavior.\n"
         "- Semantic equivalents with clear logic are acceptable.\n\n"
         "Answer format: respond with YES or NO as the first word, followed by a short justification."
     )
