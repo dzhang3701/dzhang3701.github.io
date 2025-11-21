@@ -16,6 +16,7 @@ interface TaskData {
   test_cases_count: number;
   total_queries: number;
   query_batch_size: number;
+  rule_description: string;
 }
 
 export default function TaskPage() {
@@ -27,11 +28,14 @@ export default function TaskPage() {
   const [queryInputs, setQueryInputs] = useState<string[]>(['']);
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([]);
   const [queriesUsed, setQueriesUsed] = useState(0);
+  const [failedQueries, setFailedQueries] = useState(0);
   const [hypothesis, setHypothesis] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState<{success: boolean; explanation: string} | null>(null);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
+  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [correctRule, setCorrectRule] = useState<string>('');
 
   const colors = theme === 'cyan'
     ? {
@@ -112,6 +116,7 @@ export default function TaskPage() {
       .then(res => res.json())
       .then(data => {
         setTaskData(data);
+        setCorrectRule(data.rule_description);
         setQueryInputs(new Array(data.query_batch_size).fill(''));
         setLoading(false);
       })
@@ -121,6 +126,42 @@ export default function TaskPage() {
         router.push('/');
       });
   }, [router]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (taskCompleted || loading) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Timer expired - record as failed query
+          handleTimerExpired();
+          return 60; // Reset timer
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [taskCompleted, loading, queriesUsed]);
+
+  const handleTimerExpired = () => {
+    if (!taskData) return;
+
+    // Record failed query
+    setFailedQueries(prev => prev + 1);
+    setQueriesUsed(prev => prev + 1);
+
+    // Add to history with failed marker
+    setQueryHistory(prev => [...prev, {
+      input: '[TIMEOUT]',
+      output: 'Query timed out - no query made'
+    }]);
+
+    // Clear inputs and reset timer
+    setQueryInputs(new Array(taskData.query_batch_size).fill(''));
+    setTimeRemaining(60);
+  };
 
   const handleQuery = async () => {
     if (!taskData) return;
@@ -153,8 +194,9 @@ export default function TaskPage() {
       setQueryHistory(prev => [...prev, ...data.results]);
       setQueriesUsed(data.queries_used);
 
-      // Clear input fields
+      // Clear input fields and reset timer
       setQueryInputs(new Array(taskData.query_batch_size).fill(''));
+      setTimeRemaining(60);
 
     } catch (err) {
       console.error('Query error:', err);
@@ -299,12 +341,24 @@ STRATEGY GUIDELINES:
             >
               {theme === 'cyan' ? 'red_theme' : 'cyan_theme'}
             </button>
+            {!taskCompleted && (
+              <div className={`text-sm font-mono ${timeRemaining <= 10 ? 'text-red-400' : 'text-gray-400'}`}>
+                <span className="text-gray-500">Timer:</span>{' '}
+                <span className="font-semibold">{timeRemaining}s</span>
+              </div>
+            )}
             <div className="text-sm font-mono">
               <span className="text-gray-500">Queries:</span>{' '}
               <span className={`${colors.successClass} font-semibold`}>{queriesUsed}</span>
               <span className="text-gray-600">/</span>
               <span className="text-gray-400">{taskData.total_queries}</span>
             </div>
+            {failedQueries > 0 && (
+              <div className="text-sm font-mono">
+                <span className="text-gray-500">Failed:</span>{' '}
+                <span className="text-red-400 font-semibold">{failedQueries}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -388,15 +442,24 @@ STRATEGY GUIDELINES:
                 <div className={`${colors.successBg} px-4 py-2 border-b ${colors.successBorder}`}>
                   <span className={`text-xs font-mono ${colors.successClass}`}>task.complete</span>
                 </div>
-                <div className="p-6 text-center">
-                  <div className={`text-2xl font-mono ${colors.successClass} mb-4`}>TASK COMPLETE</div>
-                  <p className="text-gray-400 mb-6 font-mono text-sm">Thank you for participating</p>
-                  <button
-                    onClick={handleEndTask}
-                    className="bg-gray-700 hover:bg-gray-600 text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors"
-                  >
-                    Exit
-                  </button>
+                <div className="p-6">
+                  <div className={`text-2xl font-mono ${colors.successClass} mb-4 text-center`}>TASK COMPLETE</div>
+                  <p className="text-gray-400 mb-6 font-mono text-sm text-center">Thank you for participating</p>
+
+                  {/* Reveal correct rule */}
+                  <div className="bg-gray-800 border border-gray-700 rounded p-4 mb-6">
+                    <div className="text-xs font-mono text-gray-500 mb-2">Correct Rule:</div>
+                    <pre className="text-sm font-mono text-gray-300 whitespace-pre-wrap">{correctRule}</pre>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleEndTask}
+                      className="bg-gray-700 hover:bg-gray-600 text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors"
+                    >
+                      Exit
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

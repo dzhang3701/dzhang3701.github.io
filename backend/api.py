@@ -78,6 +78,7 @@ def start_task():
         "test_cases_count": len(task_data["test_cases"]),
         "total_queries": task_config["total_queries"],
         "query_batch_size": task_config["query_batch_size"],
+        "rule_description": task_data["rule_spec"]["description"],
     })
 
 
