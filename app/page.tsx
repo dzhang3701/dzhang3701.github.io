@@ -8,15 +8,15 @@ export default function Home() {
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
   const router = useRouter();
 
-  const primaryColor = theme === 'cyan' ? 'cyan' : 'rose';
-  const primaryClass = theme === 'cyan' ? 'text-cyan-400' : 'text-rose-400';
-  const primaryBorder = theme === 'cyan' ? 'border-cyan-500' : 'border-rose-600';
-  const primaryRing = theme === 'cyan' ? 'focus:ring-cyan-500' : 'focus:ring-rose-600';
-  const primaryBg = theme === 'cyan' ? 'bg-cyan-600' : 'bg-rose-700';
-  const primaryBgHover = theme === 'cyan' ? 'hover:bg-cyan-500' : 'hover:bg-rose-600';
+  const primaryColor = theme === 'cyan' ? 'cyan' : 'orange';
+  const primaryClass = theme === 'cyan' ? 'text-cyan-400' : 'text-orange-300';
+  const primaryBorder = theme === 'cyan' ? 'border-cyan-500' : 'border-orange-700';
+  const primaryRing = theme === 'cyan' ? 'focus:ring-cyan-500' : 'focus:ring-orange-700';
+  const primaryBg = theme === 'cyan' ? 'bg-cyan-600' : 'bg-orange-800';
+  const primaryBgHover = theme === 'cyan' ? 'hover:bg-cyan-500' : 'hover:bg-orange-700';
   const gradientColors = theme === 'cyan'
     ? 'from-cyan-400 via-purple-400 to-emerald-400'
-    : 'from-rose-400 via-orange-400 to-amber-400';
+    : 'from-orange-300 via-amber-300 to-yellow-300';
 
   const handleStart = () => {
     if (userName.trim()) {

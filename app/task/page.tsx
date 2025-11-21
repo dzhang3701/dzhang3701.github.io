@@ -31,7 +31,7 @@ export default function TaskPage() {
   const [failedQueries, setFailedQueries] = useState(0);
   const [hypothesis, setHypothesis] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<{success: boolean; explanation: string} | null>(null);
+  const [evaluationResult, setEvaluationResult] = useState<{ success: boolean; explanation: string } | null>(null);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
   const [timeRemaining, setTimeRemaining] = useState(60);
@@ -39,47 +39,47 @@ export default function TaskPage() {
 
   const colors = theme === 'cyan'
     ? {
-        primary: 'cyan',
-        primaryClass: 'text-cyan-400',
-        primaryBg: 'bg-cyan-600',
-        primaryBgHover: 'hover:bg-cyan-500',
-        primaryBorder: 'border-cyan-500',
-        primaryRing: 'focus:ring-cyan-500',
-        secondary: 'purple',
-        secondaryClass: 'text-purple-400',
-        secondaryBg: 'bg-purple-600',
-        secondaryBgHover: 'hover:bg-purple-500',
-        secondaryBorder: 'border-purple-500',
-        secondaryRing: 'focus:ring-purple-500',
-        success: 'emerald',
-        successClass: 'text-emerald-400',
-        successBg: 'bg-emerald-500/20',
-        successBorder: 'border-emerald-500/50',
-        successBgFull: 'bg-emerald-950/50',
-        successBorderFull: 'border-emerald-500/50',
-        successBgStrong: 'bg-emerald-900/50',
-      }
+      primary: 'cyan',
+      primaryClass: 'text-cyan-400',
+      primaryBg: 'bg-cyan-600',
+      primaryBgHover: 'hover:bg-cyan-500',
+      primaryBorder: 'border-cyan-500',
+      primaryRing: 'focus:ring-cyan-500',
+      secondary: 'purple',
+      secondaryClass: 'text-purple-400',
+      secondaryBg: 'bg-purple-600',
+      secondaryBgHover: 'hover:bg-purple-500',
+      secondaryBorder: 'border-purple-500',
+      secondaryRing: 'focus:ring-purple-500',
+      success: 'emerald',
+      successClass: 'text-emerald-400',
+      successBg: 'bg-emerald-500/20',
+      successBorder: 'border-emerald-500/50',
+      successBgFull: 'bg-emerald-950/50',
+      successBorderFull: 'border-emerald-500/50',
+      successBgStrong: 'bg-emerald-900/50',
+    }
     : {
-        primary: 'rose',
-        primaryClass: 'text-rose-400',
-        primaryBg: 'bg-rose-700',
-        primaryBgHover: 'hover:bg-rose-600',
-        primaryBorder: 'border-rose-600',
-        primaryRing: 'focus:ring-rose-600',
-        secondary: 'orange',
-        secondaryClass: 'text-orange-500',
-        secondaryBg: 'bg-orange-700',
-        secondaryBgHover: 'hover:bg-orange-600',
-        secondaryBorder: 'border-orange-600',
-        secondaryRing: 'focus:ring-orange-600',
-        success: 'amber',
-        successClass: 'text-amber-500',
-        successBg: 'bg-amber-500/10',
-        successBorder: 'border-amber-600/40',
-        successBgFull: 'bg-amber-950/30',
-        successBorderFull: 'border-amber-600/40',
-        successBgStrong: 'bg-amber-900/30',
-      };
+      primary: 'orange',
+      primaryClass: 'text-orange-300',
+      primaryBg: 'bg-orange-800',
+      primaryBgHover: 'hover:bg-orange-700',
+      primaryBorder: 'border-orange-700',
+      primaryRing: 'focus:ring-orange-700',
+      secondary: 'amber',
+      secondaryClass: 'text-amber-300',
+      secondaryBg: 'bg-amber-800',
+      secondaryBgHover: 'hover:bg-amber-700',
+      secondaryBorder: 'border-amber-700',
+      secondaryRing: 'focus:ring-amber-700',
+      success: 'yellow',
+      successClass: 'text-yellow-300',
+      successBg: 'bg-yellow-500/10',
+      successBorder: 'border-yellow-700/40',
+      successBgFull: 'bg-yellow-950/30',
+      successBorderFull: 'border-yellow-700/40',
+      successBgStrong: 'bg-yellow-900/30',
+    };
 
   useEffect(() => {
     // Get user name from session storage
@@ -306,8 +306,8 @@ STRATEGY GUIDELINES:
   // Build sample cases message (same as models see)
   const sampleCasesMessage = Object.keys(taskData.sample_cases).length > 0
     ? "Sample pairs:\n" + Object.entries(taskData.sample_cases)
-        .map(([inp, out]) => `${inp} → ${out}`)
-        .join("\n")
+      .map(([inp, out]) => `${inp} → ${out}`)
+      .join("\n")
     : "No sample cases provided.";
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -394,7 +394,7 @@ STRATEGY GUIDELINES:
                     onKeyDown={handleHypothesisKeyPress}
                     className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.secondaryBorder} focus:ring-1 ${colors.secondaryRing} resize-none`}
                     rows={6}
-                    placeholder="Describe the rule you've discovered..."
+                    placeholder="Describe your hypothesis..."
                   />
                   <button
                     onClick={handleSubmitHypothesis}
@@ -410,26 +410,22 @@ STRATEGY GUIDELINES:
 
             {/* Evaluation Result */}
             {evaluationResult && (
-              <div className={`border rounded-lg overflow-hidden ${
-                evaluationResult.success
+              <div className={`border rounded-lg overflow-hidden ${evaluationResult.success
                   ? `${colors.successBgFull} ${colors.successBorderFull}`
                   : 'bg-red-950/50 border-red-500/50'
-              }`}>
-                <div className={`px-4 py-2 border-b ${
-                  evaluationResult.success
+                }`}>
+                <div className={`px-4 py-2 border-b ${evaluationResult.success
                     ? `${colors.successBgStrong} ${colors.successBorderFull}`
                     : 'bg-red-900/50 border-red-500/50'
-                }`}>
-                  <span className={`text-xs font-mono ${
-                    evaluationResult.success ? colors.successClass : 'text-red-400'
                   }`}>
+                  <span className={`text-xs font-mono ${evaluationResult.success ? colors.successClass : 'text-red-400'
+                    }`}>
                     {evaluationResult.success ? '[PASS] evaluation.result' : '[FAIL] evaluation.result'}
                   </span>
                 </div>
                 <div className="p-4">
-                  <pre className={`text-sm font-mono whitespace-pre-wrap ${
-                    evaluationResult.success ? 'text-' + colors.success + '-300' : 'text-red-300'
-                  }`}>
+                  <pre className={`text-sm font-mono whitespace-pre-wrap ${evaluationResult.success ? 'text-' + colors.success + '-300' : 'text-red-300'
+                    }`}>
                     {evaluationResult.explanation}
                   </pre>
                 </div>
@@ -514,46 +510,46 @@ STRATEGY GUIDELINES:
 
             {/* Bottom - Interaction */}
             <div className="space-y-6">
-            {/* Query Interface */}
-            {!taskCompleted && queriesRemaining > 0 && (
-              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-mono text-gray-400">query.input</span>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {queryInputs.map((input, idx) => (
-                      <div key={idx} className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
-                          {String(queriesUsed + idx + 1).padStart(3, '0')}
+              {/* Query Interface */}
+              {!taskCompleted && queriesRemaining > 0 && (
+                <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                  <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                    <span className="text-xs font-mono text-gray-400">query.input</span>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {queryInputs.map((input, idx) => (
+                        <div key={idx} className="relative">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
+                            {String(queriesUsed + idx + 1).padStart(3, '0')}
+                          </div>
+                          <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => {
+                              const newInputs = [...queryInputs];
+                              newInputs[idx] = e.target.value;
+                              setQueryInputs(newInputs);
+                            }}
+                            onKeyPress={handleKeyPress}
+                            className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
+                            placeholder={taskData.input_spec}
+                          />
                         </div>
-                        <input
-                          type="text"
-                          value={input}
-                          onChange={(e) => {
-                            const newInputs = [...queryInputs];
-                            newInputs[idx] = e.target.value;
-                            setQueryInputs(newInputs);
-                          }}
-                          onKeyPress={handleKeyPress}
-                          className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
-                          placeholder={taskData.input_spec}
-                        />
-                      </div>
-                    ))}
-                    <button
-                      onClick={handleQuery}
-                      className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
-                    >
-                      <span>Execute Query</span>
-                      <span className="text-xs opacity-60">[Enter]</span>
-                      <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
-                    </button>
+                      ))}
+                      <button
+                        onClick={handleQuery}
+                        className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
+                      >
+                        <span>Execute Query</span>
+                        <span className="text-xs opacity-60">[Enter]</span>
+                        <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
