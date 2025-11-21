@@ -1,0 +1,210 @@
+{
+  "numerical": [
+    {
+      "id": "is_prime",
+      "name": "is_prime",
+      "description": "1 if prime, 0 otherwise",
+      "type": "IntegerClassificationSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "samples_per_category": 2
+    },
+    {
+      "id": "is_pythagorean_triple",
+      "name": "is_pythagorean_triple",
+      "description": "1 if tuple forms a Pythagorean triple, 0 otherwise",
+      "type": "IntegerTupleClassificationSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "tuple_length": 3,
+      "samples_per_category": 2
+    },
+    {
+      "id": "is_greater_than_58",
+      "name": "is_greater_than_58",
+      "description": "1 if value > 58, 0 otherwise",
+      "type": "IntegerClassificationSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "samples_per_category": 2
+    },
+    {
+      "id": "digit_sum",
+      "name": "digit_sum",
+      "description": "Sum of digits",
+      "type": "IntegerIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "samples": 0
+    },
+    {
+      "id": "func_6x3_9x2_2x_3",
+      "name": "func_6x3_9x2_2x_3",
+      "description": "f(x) = 6*x^3 - 9*x^2 + 2*x + 3",
+      "type": "IntegerIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "samples": 0
+    },
+    {
+      "id": "func_3a_10b_5c",
+      "name": "func_3a_10b_5c",
+      "description": "f(a,b,c) = 3*a - 10*b + 5*c",
+      "type": "IntegerTupleIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "tuple_length": 3,
+      "samples": 0
+    },
+    {
+      "id": "func_recursion_2fx2_fx1_mod100",
+      "name": "func_recursion_2fx2_fx1_mod100",
+      "description": "f(x) = (2*f(x-2) + f(x-1)) % 100, f(1) = f(2) = f(3) = 1",
+      "type": "IntegerIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "samples": 0
+    },
+    {
+      "id": "func_ab_plus_c_sq",
+      "name": "func_ab_plus_c_sq",
+      "description": "f(a,b,c) = a*b + c^2",
+      "type": "IntegerTupleIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "tuple_length": 3,
+      "samples": 0
+    },
+    {
+      "id": "func_gcd_plus_lcm",
+      "name": "func_gcd_plus_lcm",
+      "description": "f(a,b) = gcd(a,b) + lcm(a,b)",
+      "type": "IntegerTupleIntegerSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "tuple_length": 2,
+      "samples": 0
+    },
+    {
+      "id": "triangle_type_six_ints",
+      "name": "triangle_type_six_ints",
+      "description": "Triangle type: 0=obtuse, 1=acute, 2=right",
+      "type": "IntegerTupleClassificationSpec",
+      "total_queries": 30,
+      "query_batch_size": 1,
+      "tuple_length": 6,
+      "num_categories": 3,
+      "samples_per_category": 2
+    }
+  ],
+  "lexical": [
+    {
+      "id": "contains_ab",
+      "name": "contains_ab",
+      "description": "returns 1 if the string contains 'ab' as a substring, else 0",
+      "type": "StringClassificationSpec",
+      "total_queries": 20,
+      "query_batch_size": 1,
+      "min_length": 1,
+      "max_length": 20
+    },
+    {
+      "id": "parity_sum",
+      "name": "parity_sum",
+      "description": "returns the parity (0 or 1) of the sum of character values (a=1, b=2, etc.)",
+      "type": "StringClassificationSpec",
+      "total_queries": 20,
+      "query_batch_size": 1,
+      "min_length": 1,
+      "max_length": 20
+    },
+    {
+      "id": "max_z_function",
+      "name": "max_z_function",
+      "description": "returns the maximum value of the Z-function of the string",
+      "type": "StringIntegerSpec",
+      "total_queries": 100,
+      "query_batch_size": 5,
+      "min_length": 1,
+      "max_length": 20,
+      "min_output_value": 0,
+      "max_output_value": 20
+    },
+    {
+      "id": "add_k_to_kth",
+      "name": "add_k_to_kth",
+      "description": "shifts the kth-lowest character forward by k positions for each k from 1 to n",
+      "type": "StringStringSpec",
+      "total_queries": 20,
+      "query_batch_size": 1,
+      "min_length": 1,
+      "max_length": 20
+    },
+    {
+      "id": "caesar_cipher",
+      "name": "caesar_cipher",
+      "description": "applies a Caesar cipher with shift of 10 to the string",
+      "type": "StringStringSpec",
+      "total_queries": 20,
+      "query_batch_size": 1,
+      "min_length": 1,
+      "max_length": 20
+    },
+    {
+      "id": "num_less_than_diag",
+      "name": "num_less_than_diag",
+      "description": "counts positions i where letter value at i is less than i+1 (a=1, b=2, ...)",
+      "type": "StringIntegerSpec",
+      "total_queries": 200,
+      "query_batch_size": 10,
+      "min_length": 1,
+      "max_length": 20,
+      "min_output_value": 0,
+      "max_output_value": 20
+    },
+    {
+      "id": "length_of_longest_palindromic_subsequence",
+      "name": "length_of_longest_palindromic_subsequence",
+      "description": "returns the length of the longest palindromic subsequence in the string",
+      "type": "StringIntegerSpec",
+      "total_queries": 100,
+      "query_batch_size": 5,
+      "min_length": 1,
+      "max_length": 20,
+      "min_output_value": 1,
+      "max_output_value": 20
+    },
+    {
+      "id": "is_big_gap",
+      "name": "is_big_gap",
+      "description": "returns 1 if the largest gap between consecutive characters exceeds 18, else 0",
+      "type": "StringClassificationSpec",
+      "total_queries": 100,
+      "query_batch_size": 5,
+      "min_length": 1,
+      "max_length": 20
+    },
+    {
+      "id": "num_local_maxima",
+      "name": "num_local_maxima",
+      "description": "counts positions that are strict local maxima within the string",
+      "type": "StringIntegerSpec",
+      "total_queries": 100,
+      "query_batch_size": 5,
+      "min_length": 1,
+      "max_length": 20,
+      "min_output_value": 0,
+      "max_output_value": 20
+    },
+    {
+      "id": "less_than_target",
+      "name": "less_than_target",
+      "description": "returns 1 if the string is lexicographically less than the target, else 0",
+      "type": "StringClassificationSpec",
+      "total_queries": 100,
+      "query_batch_size": 5,
+      "min_length": 1,
+      "max_length": 20
+    }
+  ]
+}
