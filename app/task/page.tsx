@@ -274,9 +274,9 @@ export default function TaskPage() {
         result: feedbackType
       }]);
 
-      // Set current feedback
+      // Set current feedback (only if incorrect or vague)
       if (!data.success) {
-        setCurrentFeedback(feedbackType);
+        setCurrentFeedback(feedbackType as 'incorrect' | 'vague');
       }
 
       // End immediately if successful OR if queries exhausted
