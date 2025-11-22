@@ -99,6 +99,11 @@ export default function Home() {
               <div><span className={primaryClass}>→</span> Submit hypothesis when ready</div>
               <div><span className={primaryClass}>→</span> Task ends when hypothesis is correct</div>
             </div>
+            <div className="mt-4 pt-4 border-t border-gray-800">
+              <div className="text-xs font-mono text-yellow-400">
+                <span className="font-semibold">⚠ Important:</span> Tasks are randomly assigned for statistical rigor. You cannot choose which task to complete.
+              </div>
+            </div>
           </div>
         </div>
       </div>
