@@ -93,6 +93,8 @@ export default function LevelsPage() {
   const renderTaskBox = (task: any, index: number, category: 'numerical' | 'lexical') => {
     const progress = taskProgress[task.id];
     const isCompleted = progress?.completed || false;
+    const isSuccess = progress?.success || false;
+    const isFailed = isCompleted && !isSuccess;
     const queriesUsed = progress?.queries_used || 0;
     const totalQueries = task.total_queries || 0;
 
@@ -100,12 +102,16 @@ export default function LevelsPage() {
       <div
         key={task.id}
         className={`relative bg-gray-900 border-2 ${
-          isCompleted ? 'border-emerald-500/50' : 'border-gray-700'
+          isSuccess ? 'border-emerald-500/50' :
+          isFailed ? 'border-red-500/50' :
+          'border-gray-700'
         } rounded-lg p-4 flex flex-col items-center justify-center transition-all hover:border-gray-600`}
       >
         {/* Task Number */}
         <div className={`text-2xl font-mono font-bold ${
-          isCompleted ? colors.successClass : 'text-gray-500'
+          isSuccess ? colors.successClass :
+          isFailed ? 'text-red-400' :
+          'text-gray-500'
         }`}>
           {index + 1}
         </div>
@@ -121,7 +127,8 @@ export default function LevelsPage() {
         {isCompleted && (
           <div className="absolute top-2 right-2">
             <div className={`w-2 h-2 rounded-full ${
-              theme === 'cyan' ? 'bg-emerald-500' : 'bg-yellow-500'
+              isSuccess ? (theme === 'cyan' ? 'bg-emerald-500' : 'bg-yellow-500') :
+              'bg-red-500'
             }`}></div>
           </div>
         )}

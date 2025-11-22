@@ -197,12 +197,15 @@ export default function TaskPage() {
   const handleQuery = async () => {
     if (!taskData) return;
 
-    // Filter out empty inputs
-    const inputs = queryInputs.filter(inp => inp.trim() !== '');
-    if (inputs.length === 0) {
+    // Check if at least one input is filled
+    const hasAnyInput = queryInputs.some(inp => inp.trim() !== '');
+    if (!hasAnyInput) {
       alert('Please enter at least one input to query.');
       return;
     }
+
+    // Fill entire batch - keep filled inputs, use empty strings for blanks
+    const batchInputs = queryInputs.map(inp => inp.trim());
 
     try {
       const response = await fetch(`${API_URL}/api/query`, {
@@ -210,7 +213,7 @@ export default function TaskPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: taskData.session_id,
-          inputs: inputs
+          inputs: batchInputs
         })
       });
 
