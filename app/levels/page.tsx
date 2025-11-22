@@ -255,11 +255,15 @@ export default function LevelsPage() {
               <div className={`w-2 h-2 rounded-full ${
                 theme === 'cyan' ? 'bg-emerald-500' : 'bg-yellow-500'
               }`}></div>
-              <span>Completed task</span>
+              <span>Correct</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+              <span>Incorrect</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-gray-700"></div>
-              <span>Incomplete task</span>
+              <span>Incomplete</span>
             </div>
           </div>
         </div>

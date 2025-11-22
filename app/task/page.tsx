@@ -475,6 +475,34 @@ Batch limit: ${taskData.query_batch_size} input(s) per query`;
                 </div>
               </div>
             )}
+
+            {/* Task Completed - MOVED FROM RIGHT */}
+            {taskCompleted && (
+              <div className={`bg-gray-900 border ${colors.successBorder} rounded-lg overflow-hidden`}>
+                <div className={`${colors.successBg} px-4 py-2 border-b ${colors.successBorder}`}>
+                  <span className={`text-xs font-mono ${colors.successClass}`}>task.complete</span>
+                </div>
+                <div className="p-6">
+                  <div className={`text-2xl font-mono ${colors.successClass} mb-4 text-center`}>TASK COMPLETE</div>
+                  <p className="text-gray-400 mb-6 font-mono text-sm text-center">Thank you for participating</p>
+
+                  {/* Reveal correct rule */}
+                  <div className="bg-gray-800 border border-gray-700 rounded p-4 mb-6">
+                    <div className="text-xs font-mono text-gray-500 mb-2">Correct Rule:</div>
+                    <pre className="text-sm font-mono text-gray-300 whitespace-pre-wrap">{correctRule}</pre>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleReturnToLevels}
+                      className={`${colors.primaryBg} ${colors.primaryBgHover} text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors`}
+                    >
+                      ← Return to Levels
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column - Query and History */}
@@ -589,34 +617,6 @@ Batch limit: ${taskData.query_batch_size} input(s) per query`;
                       <span>Execute Query</span>
                       <span className="text-xs opacity-60">[Enter]</span>
                       <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Task Completed */}
-            {taskCompleted && (
-              <div className={`bg-gray-900 border ${colors.successBorder} rounded-lg overflow-hidden`}>
-                <div className={`${colors.successBg} px-4 py-2 border-b ${colors.successBorder}`}>
-                  <span className={`text-xs font-mono ${colors.successClass}`}>task.complete</span>
-                </div>
-                <div className="p-6">
-                  <div className={`text-2xl font-mono ${colors.successClass} mb-4 text-center`}>TASK COMPLETE</div>
-                  <p className="text-gray-400 mb-6 font-mono text-sm text-center">Thank you for participating</p>
-
-                  {/* Reveal correct rule */}
-                  <div className="bg-gray-800 border border-gray-700 rounded p-4 mb-6">
-                    <div className="text-xs font-mono text-gray-500 mb-2">Correct Rule:</div>
-                    <pre className="text-sm font-mono text-gray-300 whitespace-pre-wrap">{correctRule}</pre>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handleReturnToLevels}
-                      className={`${colors.primaryBg} ${colors.primaryBgHover} text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors`}
-                    >
-                      ← Return to Levels
                     </button>
                   </div>
                 </div>
