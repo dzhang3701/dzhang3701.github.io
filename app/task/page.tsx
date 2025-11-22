@@ -354,25 +354,10 @@ export default function TaskPage() {
   const queriesRemaining = taskData.total_queries - queriesUsed;
 
   // Build system prompt (same as models see)
-  const systemPrompt = `Discover the hidden rule through strategic queries.
-
-Input: ${taskData.input_spec}
+  const systemPrompt = `Input: ${taskData.input_spec}
 Output: ${taskData.output_spec}
 Query budget: ${taskData.total_queries}
-Batch limit: up to ${taskData.query_batch_size} input(s) per query call. You must not exceed this limit.
-
-TASK:
-Your goal is to discover the hidden rule by making strategic queries. The hidden rule can be numerical or string-based. None of the rules rely on meanings, semantics, or real world context. Numbers are to be interpreted mathematically, and strings are to be interpreted as a sequence of lexicographic characters.
-You'll learn through observation - each query reveals the output for that input.
-
-STRATEGY GUIDELINES:
-- Start by querying a wide set of examples to gather information about the function
-- Convert observations into a set of hypotheses about the structure of the function
-- Refine your hypotheses with strategic queries
-- Actively seek disconfirming evidence
-- When you think you know the rule, test corner cases that could break it
-- Choose queries that maximally reduce uncertainty
-- Prefer simpler explanations over complex ones`;
+Batch limit: ${taskData.query_batch_size} input(s) per query`;
 
   // Build sample cases message (same as models see)
   const sampleCasesMessage = Object.keys(taskData.sample_cases).length > 0

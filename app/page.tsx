@@ -94,14 +94,17 @@ export default function Home() {
           </div>
           <div className="p-4">
             <div className="space-y-2 text-sm font-mono text-gray-400">
-              <div><span className={primaryClass}>→</span> Random rule will be assigned</div>
-              <div><span className={primaryClass}>→</span> Query inputs to observe outputs</div>
-              <div><span className={primaryClass}>→</span> Submit hypothesis when ready</div>
+              <div><span className={primaryClass}>→</span> Discover the hidden rule through strategic queries</div>
+              <div><span className={primaryClass}>→</span> Each query reveals the output for that input</div>
+              <div><span className={primaryClass}>→</span> Submit hypothesis once at start, then once after each query</div>
               <div><span className={primaryClass}>→</span> Task ends when hypothesis is correct</div>
             </div>
             <div className="mt-4 pt-4 border-t border-gray-800">
-              <div className="text-xs font-mono text-yellow-400">
+              <div className="text-xs font-mono text-yellow-400 mb-2">
                 <span className="font-semibold">⚠ Note:</span> Tasks are randomly assigned, you cannot choose which task to complete.
+              </div>
+              <div className="text-xs font-mono text-gray-500">
+                Rules are numerical or string-based. None rely on meanings, semantics, or real-world context.
               </div>
             </div>
           </div>

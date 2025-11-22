@@ -168,6 +168,40 @@ export default function LevelsPage() {
       </div>
 
       <div className="max-w-[1400px] mx-auto p-6 space-y-8">
+        {/* Instructions */}
+        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+          <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+            <span className="text-xs font-mono text-gray-400">instructions.md</span>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3 text-sm font-mono text-gray-300">
+              <div className={`${colors.primaryClass} font-semibold`}>TASK:</div>
+              <div className="text-gray-400">
+                Your goal is to discover the hidden rule by making strategic queries. The hidden rule can be numerical or string-based. None of the rules rely on meanings, semantics, or real world context. Numbers are to be interpreted mathematically, and strings are to be interpreted as a sequence of lexicographic characters.
+              </div>
+              <div className="text-gray-400">
+                You'll learn through observation - each query reveals the output for that input.
+              </div>
+
+              <div className={`${colors.primaryClass} font-semibold mt-4`}>STRATEGY GUIDELINES:</div>
+              <ul className="list-disc list-inside space-y-1 text-gray-400">
+                <li>Start by querying a wide set of examples to gather information</li>
+                <li>Convert observations into hypotheses about the function structure</li>
+                <li>Refine your hypotheses with strategic queries</li>
+                <li>Actively seek disconfirming evidence</li>
+                <li>When you think you know the rule, test corner cases that could break it</li>
+                <li>Choose queries that maximally reduce uncertainty</li>
+                <li>Prefer simpler explanations over complex ones</li>
+              </ul>
+
+              <div className={`${colors.primaryClass} font-semibold mt-4`}>SUBMISSION RULES:</div>
+              <div className="text-gray-400">
+                You may submit a hypothesis once at the very start before querying, and then once after each additional query.
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Start Random Task Button */}
         <div className="flex justify-center">
           <button
