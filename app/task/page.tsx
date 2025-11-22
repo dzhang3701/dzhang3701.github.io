@@ -45,7 +45,7 @@ export default function TaskPage() {
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [correctRule, setCorrectRule] = useState<string>('');
   const [lastActionWasHypothesis, setLastActionWasHypothesis] = useState(false);
-  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [currentTaskId, setCurrentTaskId] = useState<string>('');
 
   const colors = theme === 'cyan'
     ? {
@@ -100,32 +100,23 @@ export default function TaskPage() {
     }
     setUserName(name);
 
-    // Load completed tasks for this user from localStorage
-    const storageKey = `completedTasks_${name}`;
-    const completed = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    setCompletedTasks(completed);
+    // Get selected task from sessionStorage
+    const selectedTaskStr = sessionStorage.getItem('selectedTask');
+    if (!selectedTaskStr) {
+      alert('No task selected. Please select a task from the levels page.');
+      router.push('/levels');
+      return;
+    }
 
-    // Select random task from tasks.json
+    const selectedTask = JSON.parse(selectedTaskStr);
+    setCurrentTaskId(selectedTask.task_id);
+
+    // Load task config to get total_queries
     fetch('/tasks.json')
       .then(res => res.json())
       .then(async (tasks) => {
         const allTasks = [...tasks.numerical, ...tasks.lexical];
-
-        // Filter out completed tasks
-        const availableTasks = allTasks.filter((t: any) => !completed.includes(t.id));
-
-        if (availableTasks.length === 0) {
-          alert('You have completed all available tasks! Great job!');
-          router.push('/');
-          return;
-        }
-
-        const randomTask = availableTasks[Math.floor(Math.random() * availableTasks.length)];
-
-        // Determine category
-        const category = tasks.numerical.some((t: any) => t.id === randomTask.id)
-          ? 'numerical'
-          : 'lexical';
+        const taskConfig = allTasks.find((t: any) => t.id === selectedTask.task_id);
 
         // Start task session
         const res = await fetch(`${API_URL}/api/start-task`, {
@@ -133,16 +124,17 @@ export default function TaskPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             user_name: name,
-            task_id: randomTask.id,
-            task_category: category
+            task_id: selectedTask.task_id,
+            task_category: selectedTask.task_category
           })
         });
 
         const data = await res.json();
 
         // Store task_id and task_category in the data
-        data.task_id = randomTask.id;
-        data.task_category = category;
+        data.task_id = selectedTask.task_id;
+        data.task_category = selectedTask.task_category;
+        data.total_queries = taskConfig?.total_queries || data.total_queries;
         setTaskData(data);
         setCorrectRule(data.rule_description);
         setQueryInputs(new Array(data.query_batch_size).fill(''));
@@ -151,7 +143,7 @@ export default function TaskPage() {
       .catch(err => {
         console.error('Error starting task:', err);
         alert('Failed to start task. Please try again.');
-        router.push('/');
+        router.push('/levels');
       });
   }, [router]);
 
@@ -291,6 +283,18 @@ export default function TaskPage() {
       const queriesRemaining = taskData.total_queries - queriesUsed;
       if (data.success || queriesRemaining === 0) {
         setTaskCompleted(true);
+
+        // Save task progress to localStorage
+        const storageKey = `taskProgress_${userName}`;
+        const progress = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        progress[currentTaskId] = {
+          task_id: currentTaskId,
+          completed: true,
+          queries_used: queriesUsed,
+          total_queries: taskData.total_queries,
+          success: data.success
+        };
+        localStorage.setItem(storageKey, JSON.stringify(progress));
       } else {
         setHypothesis('');
       }
@@ -304,7 +308,7 @@ export default function TaskPage() {
     }
   };
 
-  const handleNextTask = async () => {
+  const handleReturnToLevels = async () => {
     if (!taskData) return;
 
     try {
@@ -316,78 +320,15 @@ export default function TaskPage() {
           session_id: taskData.session_id
         })
       });
-
-      // Mark current task as completed in localStorage
-      if (taskData.task_id) {
-        const storageKey = `completedTasks_${userName}`;
-        const updatedCompleted = [...completedTasks, taskData.task_id];
-        localStorage.setItem(storageKey, JSON.stringify(updatedCompleted));
-        setCompletedTasks(updatedCompleted);
-      }
     } catch (err) {
       console.error('Error ending task:', err);
     }
 
-    // Reset all state
-    setTaskCompleted(false);
-    setQueryHistory([]);
-    setQueriesUsed(0);
-    setFailedQueries(0);
-    setHypothesis('');
-    setSubmissionHistory([]);
-    setCurrentFeedback(null);
-    setLastActionWasHypothesis(false);
-    setTimeRemaining(60);
-    setLoading(true);
+    // Clear selected task from sessionStorage
+    sessionStorage.removeItem('selectedTask');
 
-    // Load a new task
-    try {
-      const tasksRes = await fetch('/tasks.json');
-      const tasks = await tasksRes.json();
-      const allTasks = [...tasks.numerical, ...tasks.lexical];
-
-      // Get updated completed tasks list
-      const storageKey = `completedTasks_${userName}`;
-      const completed = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-      // Filter out completed tasks
-      const availableTasks = allTasks.filter((t: any) => !completed.includes(t.id));
-
-      if (availableTasks.length === 0) {
-        alert('You have completed all available tasks! Great job!');
-        router.push('/');
-        return;
-      }
-
-      const randomTask = availableTasks[Math.floor(Math.random() * availableTasks.length)];
-
-      const category = tasks.numerical.some((t: any) => t.id === randomTask.id)
-        ? 'numerical'
-        : 'lexical';
-
-      const res = await fetch(`${API_URL}/api/start-task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_name: userName,
-          task_id: randomTask.id,
-          task_category: category
-        })
-      });
-
-      const data = await res.json();
-      // Store task_id and task_category in the data
-      data.task_id = randomTask.id;
-      data.task_category = category;
-      setTaskData(data);
-      setCorrectRule(data.rule_description);
-      setQueryInputs(new Array(data.query_batch_size).fill(''));
-      setLoading(false);
-    } catch (err) {
-      console.error('Error starting next task:', err);
-      alert('Failed to start next task. Please try again.');
-      router.push('/');
-    }
+    // Return to levels page
+    router.push('/levels');
   };
 
   if (loading) {
@@ -676,10 +617,10 @@ STRATEGY GUIDELINES:
 
                   <div className="flex justify-center">
                     <button
-                      onClick={handleNextTask}
+                      onClick={handleReturnToLevels}
                       className={`${colors.primaryBg} ${colors.primaryBgHover} text-gray-100 font-mono text-sm py-2 px-6 rounded transition-colors`}
                     >
-                      Next Task →
+                      ← Return to Levels
                     </button>
                   </div>
                 </div>

@@ -22,8 +22,8 @@ export default function Home() {
     if (userName.trim()) {
       // Save user name to session storage
       sessionStorage.setItem('userName', userName);
-      // Redirect to task page
-      router.push('/task');
+      // Redirect to levels page
+      router.push('/levels');
     }
   };
 
