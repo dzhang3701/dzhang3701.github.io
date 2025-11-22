@@ -22,6 +22,8 @@ interface TaskData {
   total_queries: number;
   query_batch_size: number;
   rule_description: string;
+  task_id?: string;
+  task_category?: string;
 }
 
 export default function TaskPage() {
@@ -43,6 +45,7 @@ export default function TaskPage() {
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [correctRule, setCorrectRule] = useState<string>('');
   const [lastActionWasHypothesis, setLastActionWasHypothesis] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
   const colors = theme === 'cyan'
     ? {
@@ -97,12 +100,27 @@ export default function TaskPage() {
     }
     setUserName(name);
 
+    // Load completed tasks for this user from localStorage
+    const storageKey = `completedTasks_${name}`;
+    const completed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    setCompletedTasks(completed);
+
     // Select random task from tasks.json
     fetch('/tasks.json')
       .then(res => res.json())
-      .then(tasks => {
+      .then(async (tasks) => {
         const allTasks = [...tasks.numerical, ...tasks.lexical];
-        const randomTask = allTasks[Math.floor(Math.random() * allTasks.length)];
+
+        // Filter out completed tasks
+        const availableTasks = allTasks.filter((t: any) => !completed.includes(t.id));
+
+        if (availableTasks.length === 0) {
+          alert('You have completed all available tasks! Great job!');
+          router.push('/');
+          return;
+        }
+
+        const randomTask = availableTasks[Math.floor(Math.random() * availableTasks.length)];
 
         // Determine category
         const category = tasks.numerical.some((t: any) => t.id === randomTask.id)
@@ -110,7 +128,7 @@ export default function TaskPage() {
           : 'lexical';
 
         // Start task session
-        return fetch(`${API_URL}/api/start-task`, {
+        const res = await fetch(`${API_URL}/api/start-task`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -119,9 +137,12 @@ export default function TaskPage() {
             task_category: category
           })
         });
-      })
-      .then(res => res.json())
-      .then(data => {
+
+        const data = await res.json();
+
+        // Store task_id and task_category in the data
+        data.task_id = randomTask.id;
+        data.task_category = category;
         setTaskData(data);
         setCorrectRule(data.rule_description);
         setQueryInputs(new Array(data.query_batch_size).fill(''));
@@ -295,6 +316,14 @@ export default function TaskPage() {
           session_id: taskData.session_id
         })
       });
+
+      // Mark current task as completed in localStorage
+      if (taskData.task_id) {
+        const storageKey = `completedTasks_${userName}`;
+        const updatedCompleted = [...completedTasks, taskData.task_id];
+        localStorage.setItem(storageKey, JSON.stringify(updatedCompleted));
+        setCompletedTasks(updatedCompleted);
+      }
     } catch (err) {
       console.error('Error ending task:', err);
     }
@@ -316,7 +345,21 @@ export default function TaskPage() {
       const tasksRes = await fetch('/tasks.json');
       const tasks = await tasksRes.json();
       const allTasks = [...tasks.numerical, ...tasks.lexical];
-      const randomTask = allTasks[Math.floor(Math.random() * allTasks.length)];
+
+      // Get updated completed tasks list
+      const storageKey = `completedTasks_${userName}`;
+      const completed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+      // Filter out completed tasks
+      const availableTasks = allTasks.filter((t: any) => !completed.includes(t.id));
+
+      if (availableTasks.length === 0) {
+        alert('You have completed all available tasks! Great job!');
+        router.push('/');
+        return;
+      }
+
+      const randomTask = availableTasks[Math.floor(Math.random() * availableTasks.length)];
 
       const category = tasks.numerical.some((t: any) => t.id === randomTask.id)
         ? 'numerical'
@@ -333,6 +376,9 @@ export default function TaskPage() {
       });
 
       const data = await res.json();
+      // Store task_id and task_category in the data
+      data.task_id = randomTask.id;
+      data.task_category = category;
       setTaskData(data);
       setCorrectRule(data.rule_description);
       setQueryInputs(new Array(data.query_batch_size).fill(''));
@@ -500,6 +546,37 @@ STRATEGY GUIDELINES:
 
           {/* Right Column */}
           <div className="space-y-6">
+            {/* Submission History */}
+            {submissionHistory.length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                  <span className="text-xs font-mono text-gray-400">submission_history.log</span>
+                </div>
+                <div className="p-3 max-h-64 overflow-y-auto">
+                  <div className="space-y-2">
+                    {submissionHistory.map((submission, idx) => (
+                      <div key={idx} className="border-l-2 border-gray-700 pl-3 py-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-gray-500 font-mono text-xs">#{idx + 1}</span>
+                          <span className={`text-xs font-mono ${submission.result === 'correct' ? colors.successClass :
+                            submission.result === 'vague' ? 'text-yellow-400' :
+                              'text-red-400'
+                            }`}>
+                            {submission.result === 'correct' ? '✓ Correct' :
+                              submission.result === 'vague' ? '⚠ Too vague' :
+                                '✗ Incorrect'}
+                          </span>
+                        </div>
+                        <div className="text-xs font-mono text-gray-400 break-words">
+                          {submission.hypothesis}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Top Row - Samples and History side by side */}
             <div className="grid grid-cols-2 gap-4">
               {/* Sample Cases */}
@@ -577,37 +654,6 @@ STRATEGY GUIDELINES:
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {/* Submission History */}
-            {submissionHistory.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-mono text-gray-400">submission_history.log</span>
-                </div>
-                <div className="p-3 max-h-64 overflow-y-auto">
-                  <div className="space-y-2">
-                    {submissionHistory.map((submission, idx) => (
-                      <div key={idx} className="border-l-2 border-gray-700 pl-3 py-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-gray-500 font-mono text-xs">#{idx + 1}</span>
-                          <span className={`text-xs font-mono ${submission.result === 'correct' ? colors.successClass :
-                            submission.result === 'vague' ? 'text-yellow-400' :
-                              'text-red-400'
-                            }`}>
-                            {submission.result === 'correct' ? '✓ Correct' :
-                              submission.result === 'vague' ? '⚠ Too vague' :
-                                '✗ Incorrect'}
-                          </span>
-                        </div>
-                        <div className="text-xs font-mono text-gray-400 break-words">
-                          {submission.hypothesis}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
