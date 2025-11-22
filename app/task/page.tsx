@@ -129,7 +129,15 @@ export default function TaskPage() {
           })
         });
 
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status} ${res.statusText}`);
+        }
+
         const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
 
         // Store task_id and task_category in the data
         data.task_id = selectedTask.task_id;
@@ -142,7 +150,7 @@ export default function TaskPage() {
       })
       .catch(err => {
         console.error('Error starting task:', err);
-        alert('Failed to start task. Please try again.');
+        alert(`Failed to start task: ${err.message}\n\nPlease try again.`);
         router.push('/levels');
       });
   }, [router]);
