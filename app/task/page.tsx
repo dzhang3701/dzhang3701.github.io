@@ -8,6 +8,11 @@ interface QueryResult {
   output: any;
 }
 
+interface SubmissionResult {
+  hypothesis: string;
+  result: 'correct' | 'incorrect' | 'vague';
+}
+
 interface TaskData {
   session_id: string;
   input_spec: string;
@@ -31,7 +36,8 @@ export default function TaskPage() {
   const [failedQueries, setFailedQueries] = useState(0);
   const [hypothesis, setHypothesis] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<{ success: boolean; explanation: string } | null>(null);
+  const [submissionHistory, setSubmissionHistory] = useState<SubmissionResult[]>([]);
+  const [currentFeedback, setCurrentFeedback] = useState<'incorrect' | 'vague' | null>(null);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
   const [timeRemaining, setTimeRemaining] = useState(60);
@@ -239,11 +245,26 @@ export default function TaskPage() {
       // Mark that hypothesis was submitted
       setLastActionWasHypothesis(true);
 
-      // Show result - hide detailed explanation if incorrect
-      setEvaluationResult({
-        success: data.success,
-        explanation: data.success ? data.explanation : 'Incorrect hypothesis. Try making more queries to refine your understanding.'
-      });
+      // Determine feedback type based on explanation
+      let feedbackType: 'correct' | 'incorrect' | 'vague';
+      if (data.success) {
+        feedbackType = 'correct';
+      } else {
+        const isVague = data.explanation.toLowerCase().includes('vague') ||
+                       data.explanation.toLowerCase().includes('ambiguous');
+        feedbackType = isVague ? 'vague' : 'incorrect';
+      }
+
+      // Add to submission history
+      setSubmissionHistory(prev => [...prev, {
+        hypothesis: hypothesis,
+        result: feedbackType
+      }]);
+
+      // Set current feedback
+      if (!data.success) {
+        setCurrentFeedback(feedbackType);
+      }
 
       // End immediately if successful OR if queries exhausted
       const queriesRemaining = taskData.total_queries - queriesUsed;
@@ -284,7 +305,8 @@ export default function TaskPage() {
     setQueriesUsed(0);
     setFailedQueries(0);
     setHypothesis('');
-    setEvaluationResult(null);
+    setSubmissionHistory([]);
+    setCurrentFeedback(null);
     setLastActionWasHypothesis(false);
     setTimeRemaining(60);
     setLoading(true);
@@ -546,30 +568,47 @@ STRATEGY GUIDELINES:
                     <span>{submitting ? 'Evaluating...' : lastActionWasHypothesis && queriesRemaining > 0 ? 'Make a query first' : 'Submit Hypothesis'}</span>
                     <span className="text-xs opacity-60">[Cmd+Enter]</span>
                   </button>
+
+                  {/* Current Feedback */}
+                  {currentFeedback && (
+                    <div className="mt-3 p-3 bg-red-900/30 border border-red-500/50 rounded">
+                      <div className="text-sm font-mono text-red-400">
+                        {currentFeedback === 'vague' ? '⚠ Too vague or ambiguous' : '✗ Incorrect'}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Evaluation Result */}
-            {evaluationResult && (
-              <div className={`border rounded-lg overflow-hidden ${evaluationResult.success
-                ? `${colors.successBgFull} ${colors.successBorderFull}`
-                : 'bg-red-950/50 border-red-500/50'
-                }`}>
-                <div className={`px-4 py-2 border-b ${evaluationResult.success
-                  ? `${colors.successBgStrong} ${colors.successBorderFull}`
-                  : 'bg-red-900/50 border-red-500/50'
-                  }`}>
-                  <span className={`text-xs font-mono ${evaluationResult.success ? colors.successClass : 'text-red-400'
-                    }`}>
-                    {evaluationResult.success ? '[PASS] evaluation.result' : '[FAIL] evaluation.result'}
-                  </span>
+            {/* Submission History */}
+            {submissionHistory.length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
+                  <span className="text-xs font-mono text-gray-400">submission_history.log</span>
                 </div>
-                <div className="p-4">
-                  <pre className={`text-sm font-mono whitespace-pre-wrap ${evaluationResult.success ? 'text-' + colors.success + '-300' : 'text-red-300'
-                    }`}>
-                    {evaluationResult.explanation}
-                  </pre>
+                <div className="p-3 max-h-64 overflow-y-auto">
+                  <div className="space-y-2">
+                    {submissionHistory.map((submission, idx) => (
+                      <div key={idx} className="border-l-2 border-gray-700 pl-3 py-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-gray-500 font-mono text-xs">#{idx + 1}</span>
+                          <span className={`text-xs font-mono ${
+                            submission.result === 'correct' ? colors.successClass :
+                            submission.result === 'vague' ? 'text-yellow-400' :
+                            'text-red-400'
+                          }`}>
+                            {submission.result === 'correct' ? '✓ Correct' :
+                             submission.result === 'vague' ? '⚠ Too vague' :
+                             '✗ Incorrect'}
+                          </span>
+                        </div>
+                        <div className="text-xs font-mono text-gray-400 break-words">
+                          {submission.hypothesis}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
