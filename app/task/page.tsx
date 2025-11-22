@@ -42,7 +42,7 @@ export default function TaskPage() {
   const [currentFeedback, setCurrentFeedback] = useState<'incorrect' | 'vague' | null>(null);
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [theme, setTheme] = useState<'cyan' | 'red'>('cyan');
-  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [timeRemaining, setTimeRemaining] = useState(180);
   const [correctRule, setCorrectRule] = useState<string>('');
   const [lastActionWasHypothesis, setLastActionWasHypothesis] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string>('');
@@ -156,7 +156,7 @@ export default function TaskPage() {
         if (prev <= 1) {
           // Timer expired - record as failed query
           handleTimerExpired();
-          return 60; // Reset timer
+          return 180; // Reset timer
         }
         return prev - 1;
       });
@@ -183,7 +183,7 @@ export default function TaskPage() {
 
     // Clear inputs and reset timer
     setQueryInputs(new Array(batchSize).fill(''));
-    setTimeRemaining(60);
+    setTimeRemaining(180);
   };
 
   const handleQuery = async () => {
@@ -219,7 +219,7 @@ export default function TaskPage() {
 
       // Clear input fields and reset timer
       setQueryInputs(new Array(taskData.query_batch_size).fill(''));
-      setTimeRemaining(60);
+      setTimeRemaining(180);
 
       // Allow hypothesis submission after query
       setLastActionWasHypothesis(false);
@@ -405,7 +405,7 @@ STRATEGY GUIDELINES:
               {theme === 'cyan' ? 'red_theme' : 'cyan_theme'}
             </button>
             {!taskCompleted && (
-              <div className={`text-sm font-mono ${timeRemaining <= 10 ? 'text-red-400' : 'text-gray-400'}`}>
+              <div className={`text-sm font-mono ${timeRemaining <= 30 ? 'text-red-400' : 'text-gray-400'}`}>
                 <span className="text-gray-500">Timer:</span>{' '}
                 <span className="font-semibold">{timeRemaining}s</span>
               </div>
