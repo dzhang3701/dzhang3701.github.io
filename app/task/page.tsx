@@ -421,7 +421,7 @@ Batch limit: ${taskData.query_batch_size} input(s) per query`;
 
       <div className="max-w-[1800px] mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - System Prompt and Query */}
+          {/* Left Column - System Prompt and Hypothesis */}
           <div className="space-y-6">
             {/* System Prompt */}
             <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
@@ -437,48 +437,44 @@ Batch limit: ${taskData.query_batch_size} input(s) per query`;
               </div>
             </div>
 
-            {/* Query Interface */}
-            {!taskCompleted && queriesRemaining > 0 && (
+            {/* Hypothesis Submission - MOVED FROM RIGHT */}
+            {!taskCompleted && (
               <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                 <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-mono text-gray-400">query.input</span>
+                  <span className="text-xs font-mono text-gray-400">hypothesis.txt</span>
                 </div>
                 <div className="p-4">
-                  <div className="space-y-3">
-                    {queryInputs.map((input, idx) => (
-                      <div key={idx} className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
-                          {String(queriesUsed + idx + 1).padStart(3, '0')}
-                        </div>
-                        <input
-                          type="text"
-                          value={input}
-                          onChange={(e) => {
-                            const newInputs = [...queryInputs];
-                            newInputs[idx] = e.target.value;
-                            setQueryInputs(newInputs);
-                          }}
-                          onKeyPress={handleKeyPress}
-                          className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
-                          placeholder={taskData.input_spec}
-                        />
+                  <textarea
+                    value={hypothesis}
+                    onChange={(e) => setHypothesis(e.target.value)}
+                    onKeyDown={handleHypothesisKeyPress}
+                    className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.secondaryBorder} focus:ring-1 ${colors.secondaryRing} resize-none`}
+                    rows={6}
+                    placeholder="Describe your hypothesis..."
+                  />
+                  <button
+                    onClick={handleSubmitHypothesis}
+                    disabled={submitting || !hypothesis.trim() || (lastActionWasHypothesis && queriesRemaining > 0)}
+                    className={`mt-3 w-full ${colors.secondaryBg} ${colors.secondaryBgHover} disabled:bg-gray-700 disabled:text-gray-500 text-gray-100 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
+                  >
+                    <span>{submitting ? 'Evaluating...' : lastActionWasHypothesis && queriesRemaining > 0 ? 'Make a query first' : 'Submit Hypothesis'}</span>
+                    <span className="text-xs opacity-60">[Cmd+Enter]</span>
+                  </button>
+
+                  {/* Current Feedback */}
+                  {currentFeedback && (
+                    <div className="mt-3 p-3 bg-red-900/30 border border-red-500/50 rounded">
+                      <div className="text-sm font-mono text-red-400">
+                        {currentFeedback === 'vague' ? '⚠ Too vague or ambiguous' : '✗ Incorrect'}
                       </div>
-                    ))}
-                    <button
-                      onClick={handleQuery}
-                      className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
-                    >
-                      <span>Execute Query</span>
-                      <span className="text-xs opacity-60">[Enter]</span>
-                      <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right Column */}
+          {/* Right Column - Query and History */}
           <div className="space-y-6">
             {/* Submission History */}
             {submissionHistory.length > 0 && (
@@ -556,38 +552,42 @@ Batch limit: ${taskData.query_batch_size} input(s) per query`;
               )}
             </div>
 
-            {/* Hypothesis Submission */}
-            {!taskCompleted && (
+            {/* Query Interface - MOVED FROM LEFT */}
+            {!taskCompleted && queriesRemaining > 0 && (
               <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                 <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
-                  <span className="text-xs font-mono text-gray-400">hypothesis.txt</span>
+                  <span className="text-xs font-mono text-gray-400">query.input</span>
                 </div>
                 <div className="p-4">
-                  <textarea
-                    value={hypothesis}
-                    onChange={(e) => setHypothesis(e.target.value)}
-                    onKeyDown={handleHypothesisKeyPress}
-                    className={`w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.secondaryBorder} focus:ring-1 ${colors.secondaryRing} resize-none`}
-                    rows={6}
-                    placeholder="Describe your hypothesis..."
-                  />
-                  <button
-                    onClick={handleSubmitHypothesis}
-                    disabled={submitting || !hypothesis.trim() || (lastActionWasHypothesis && queriesRemaining > 0)}
-                    className={`mt-3 w-full ${colors.secondaryBg} ${colors.secondaryBgHover} disabled:bg-gray-700 disabled:text-gray-500 text-gray-100 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
-                  >
-                    <span>{submitting ? 'Evaluating...' : lastActionWasHypothesis && queriesRemaining > 0 ? 'Make a query first' : 'Submit Hypothesis'}</span>
-                    <span className="text-xs opacity-60">[Cmd+Enter]</span>
-                  </button>
-
-                  {/* Current Feedback */}
-                  {currentFeedback && (
-                    <div className="mt-3 p-3 bg-red-900/30 border border-red-500/50 rounded">
-                      <div className="text-sm font-mono text-red-400">
-                        {currentFeedback === 'vague' ? '⚠ Too vague or ambiguous' : '✗ Incorrect'}
+                  <div className="space-y-3">
+                    {queryInputs.map((input, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">
+                          {String(queriesUsed + idx + 1).padStart(3, '0')}
+                        </div>
+                        <input
+                          type="text"
+                          value={input}
+                          onChange={(e) => {
+                            const newInputs = [...queryInputs];
+                            newInputs[idx] = e.target.value;
+                            setQueryInputs(newInputs);
+                          }}
+                          onKeyPress={handleKeyPress}
+                          className={`w-full pl-12 pr-4 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-sm text-gray-100 placeholder-gray-500 focus:outline-none ${colors.primaryBorder} focus:ring-1 ${colors.primaryRing}`}
+                          placeholder={taskData.input_spec}
+                        />
                       </div>
-                    </div>
-                  )}
+                    ))}
+                    <button
+                      onClick={handleQuery}
+                      className={`w-full ${colors.primaryBg} ${colors.primaryBgHover} text-gray-900 font-mono text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2`}
+                    >
+                      <span>Execute Query</span>
+                      <span className="text-xs opacity-60">[Enter]</span>
+                      <span className="text-xs ml-auto opacity-60">{queriesRemaining} left</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
