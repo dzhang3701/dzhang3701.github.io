@@ -251,7 +251,7 @@ export default function TaskPage() {
         feedbackType = 'correct';
       } else {
         const isVague = data.explanation.toLowerCase().includes('vague') ||
-                       data.explanation.toLowerCase().includes('ambiguous');
+          data.explanation.toLowerCase().includes('ambiguous');
         feedbackType = isVague ? 'vague' : 'incorrect';
       }
 
@@ -406,7 +406,7 @@ STRATEGY GUIDELINES:
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-3">
         <div className="flex justify-between items-center max-w-[1800px] mx-auto">
           <div className="flex items-center gap-4">
-            <div className={`${colors.primaryClass} font-mono text-lg`}>Black Box Hypothesis Testing</div>
+            <div className={`${colors.primaryClass} font-mono text-lg`}>Black Box Hypothesis Evaluation</div>
             <div className="text-gray-500">|</div>
             <div className="text-gray-400 text-sm font-mono">{userName}</div>
           </div>
@@ -593,14 +593,13 @@ STRATEGY GUIDELINES:
                       <div key={idx} className="border-l-2 border-gray-700 pl-3 py-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-gray-500 font-mono text-xs">#{idx + 1}</span>
-                          <span className={`text-xs font-mono ${
-                            submission.result === 'correct' ? colors.successClass :
+                          <span className={`text-xs font-mono ${submission.result === 'correct' ? colors.successClass :
                             submission.result === 'vague' ? 'text-yellow-400' :
-                            'text-red-400'
-                          }`}>
+                              'text-red-400'
+                            }`}>
                             {submission.result === 'correct' ? '✓ Correct' :
-                             submission.result === 'vague' ? '⚠ Too vague' :
-                             '✗ Incorrect'}
+                              submission.result === 'vague' ? '⚠ Too vague' :
+                                '✗ Incorrect'}
                           </span>
                         </div>
                         <div className="text-xs font-mono text-gray-400 break-words">
