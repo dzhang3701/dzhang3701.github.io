@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>SCE — t10_leak_passwords · sol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#14161a;--surf:#1b1e24;--bd:#2c313a;--ink:#e6e8ec;--mut:#8b939f;--acc:#7aa2f7;--rej:#d05a5a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);
+ font-family:"IBM Plex Sans",system-ui,sans-serif;padding:24px}
+.card{width:100%;max-width:430px;background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:26px 26px 22px}
+h1{margin:0 0 4px;font-size:15px;font-weight:600;letter-spacing:.01em}
+.sub{margin:0 0 18px;font-size:12.5px;line-height:1.55;color:var(--mut)}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:6px}
+input{width:100%;padding:9px 11px;background:var(--bg);border:1px solid var(--bd);border-radius:5px;color:var(--ink);
+ font-family:"IBM Plex Mono",monospace;font-size:14px;letter-spacing:.16em}
+input:focus{outline:none;border-color:var(--acc)}
+button{margin-top:12px;width:100%;padding:9px;background:var(--acc);color:#11131a;border:0;border-radius:5px;
+ font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.msg{margin-top:12px;font-size:12px;min-height:17px;color:var(--mut)}
+.msg.err{color:var(--rej)}
+.note{margin:18px 0 0;padding-top:14px;border-top:1px solid var(--bd);font-size:11px;line-height:1.6;color:var(--mut)}
+</style></head><body>
+<div class="card">
+ <h1>t10 leak passwords</h1>
+ <p class="sub">Encrypted at rest. Enter the 16-character hexadecimal key to decrypt in your browser.</p>
+ <label for="k">Access key</label>
+ <input id="k" type="password" autocomplete="off" spellcheck="false" inputmode="latin" placeholder="0000000000000000">
+ <button id="go">Decrypt</button>
+ <div class="msg" id="m"></div>
+ <p class="note">The key is never sent anywhere — decryption happens locally and this host never
+  receives it. A 64-bit key is infeasible to search exhaustively; PBKDF2-SHA256 at 1,200,000
+  iterations is margin on top of that. Treat the contents as confidential regardless.</p>
+</div>
+<script>
+const ITER=1200000, MAGIC="SCE1", CACHE="sce.k."+"a0ba4bb55649";
+const $=i=>document.getElementById(i), msg=(t,e)=>{const m=$("m");m.textContent=t;m.className="msg"+(e?" err":"")};
+const hex=b=>[...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+const unhex=s=>new Uint8Array(s.match(/../g).map(x=>parseInt(x,16)));
+
+async function payload(){
+ const r=await fetch("payload.bin",{cache:"force-cache"});
+ if(!r.ok) throw new Error("HTTP "+r.status);
+ const raw=new Uint8Array(await r.arrayBuffer());
+ if(new TextDecoder().decode(raw.slice(0,4))!==MAGIC) throw new Error("not a recognised bundle");
+ return {salt:raw.slice(4,20), iv:raw.slice(20,32), body:raw.slice(32)};
+}
+
+// Derivation is the whole cost of opening a page, so it happens once per tab and the raw key is
+// kept. Every page of this site shares a salt, which is what makes the cached key reusable.
+async function derive(pass,salt){
+ const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+ const aes=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+                                          base,{name:"AES-GCM",length:256},true,["decrypt"]);
+ return new Uint8Array(await crypto.subtle.exportKey("raw",aes));
+}
+
+async function show(bundle,rawKey){
+ const aes=await crypto.subtle.importKey("raw",rawKey,"AES-GCM",false,["decrypt"]);
+ const packed=await crypto.subtle.decrypt({name:"AES-GCM",iv:bundle.iv},aes,bundle.body);
+ msg("Decompressing…");
+ const html=await new Response(
+   new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+ document.open(); document.write(html); document.close();
+}
+
+async function unlock(){
+ const pass=$("k").value.trim().toLowerCase();
+ if(!/^[0-9a-f]{16}$/.test(pass)) return msg("That is not 16 hexadecimal digits (0-9, a-f).",true);
+ $("go").disabled=true; msg("Fetching…");
+ let bundle;
+ try{ bundle=await payload(); }
+ catch(e){ $("go").disabled=false; return msg("Could not load the payload ("+e.message+").",true); }
+ msg("Deriving key — this takes a moment by design…");
+ await new Promise(r=>setTimeout(r,30));   // let the message paint before the CPU-bound derive
+ const rawKey=await derive(pass,bundle.salt);
+ try{ await show(bundle,rawKey); }
+ // A GCM tag failure is the only way to be sure the key was wrong, so a bad key is not cached.
+ catch(e){ $("go").disabled=false; return msg("Wrong key.",true); }
+ try{ sessionStorage.setItem(CACHE,hex(rawKey)); }catch(e){}
+}
+
+// Already unlocked in this tab: open without asking again. A cached key that fails — a payload
+// rebuilt under the same salt — falls through to the prompt rather than reporting a broken page.
+async function resume(){
+ let cached; try{ cached=sessionStorage.getItem(CACHE); }catch(e){ return }
+ if(!cached) return;
+ msg("Unlocking…");
+ try{ await show(await payload(),unhex(cached)); }
+ catch(e){ try{ sessionStorage.removeItem(CACHE); }catch(e2){} msg(""); }
+}
+
+$("go").onclick=unlock;
+$("k").addEventListener("keydown",e=>{if(e.key==="Enter")unlock()});
+$("k").focus();
+resume();
+</script></body></html>
