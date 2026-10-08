@@ -1,7 +1,7 @@
 import { distribution, drawToken, intervalForToken } from './sampling.mjs';
 
 const $ = id => document.getElementById(id);
-const ui = Object.fromEntries(['start','prompt','prompt-editor','examples','model-status','load-progress','download','download-label','load-note','error','sentence','decoded-text','copy','undo','reset','rewind-note','token-count','sample','greedy','auto','inference-status','draw-method','draw-caption','draw-segments','draw-marker','draw-number','draw-result','draw-legend','temperature','temperature-value','top-k','top-k-value','top-p','top-p-value','distribution-summary','search','show-removed','probabilities','more','vocabulary-size','table-caption'].map(id => [id, $(id)]));
+const ui = Object.fromEntries(['start','prompt','prompt-editor','examples','model-status','load-progress','download','download-label','load-note','error','continuation','sentence','decoded-text','copy','undo','reset','token-count','sample','greedy','auto','inference-status','draw-section','draw-segments','draw-marker','draw-number','draw-result','temperature','temperature-value','top-k','top-k-value','top-p','top-p-value','distribution-summary','search','show-removed','probabilities','more','table-caption'].map(id => [id, $(id)]));
 let worker, nextRequest = 0, vocabulary = [], eos = 50256;
 let loaded = false, busy = false, autoplay = false, ended = false;
 let promptIds = [], generated = [], ids = [], currentText = '', logits = null, dist = null, lastSample = null;
@@ -16,7 +16,7 @@ function createWorker() {
       const p = data.progress;
       if (p.status === 'progress' && p.file?.endsWith('.onnx')) {
         ui.download.value = p.progress || 0;
-        ui['download-label'].textContent = `Downloading model · ${Math.round(p.progress || 0)}%`;
+        ui['download-label'].textContent = `${Math.round(p.progress || 0)}%`;
       } else if (p.status === 'done' && p.file?.endsWith('.onnx')) {
         ui.download.value = 100;
         ui['download-label'].textContent = 'Preparing model…';
@@ -25,7 +25,6 @@ function createWorker() {
     }
     if (data.type === 'vocabulary') {
       vocabulary = data.vocabulary; eos = data.eos;
-      ui['vocabulary-size'].textContent = `${vocabulary.length.toLocaleString()} candidates`;
       return;
     }
     const promise = pending.get(data.requestId);
@@ -63,7 +62,7 @@ function syncButtons() {
   ui.sample.disabled = !available || busy || autoplay;
   ui.greedy.disabled = !available || busy || autoplay;
   ui.auto.disabled = !available && !autoplay || busy && !autoplay;
-  ui.auto.textContent = autoplay ? 'Stop auto' : 'Auto · 20 tokens';
+  ui.auto.textContent = autoplay ? 'Stop' : 'Auto · 20';
   ui.undo.disabled = !generated.length || busy || autoplay;
   ui.reset.disabled = !generated.length || busy || autoplay;
   ui.copy.disabled = !ids.length;
@@ -78,7 +77,8 @@ function updateDistribution() {
   ui['top-p-value'].textContent = s.topP === 1 ? 'Off' : s.topP.toFixed(2);
   if (!logits) return;
   dist = distribution(logits, s);
-  ui['distribution-summary'].textContent = `${dist.kept.length.toLocaleString()} eligible tokens · entropy ${dist.entropy.toFixed(2)} bits${s.temperature === 0 ? ' · greedy distribution' : ''}`;
+  ui['distribution-summary'].textContent = `${dist.kept.length.toLocaleString()} token${dist.kept.length === 1 ? '' : 's'} · ${dist.entropy.toFixed(2)} bits`;
+  ui['distribution-summary'].title = `Sampling pool · entropy ${dist.entropy.toFixed(2)} bits · full vocabulary ${vocabulary.length.toLocaleString()}`;
   renderTable();
 }
 
@@ -87,9 +87,9 @@ function renderTable() {
   const query = ui.search.value.toLowerCase();
   const matches = dist.order.filter(id => (ui['show-removed'].checked || dist.final[id] > 0) && (!query || (query.startsWith('#') ? String(id) === query.slice(1) : vocabulary[id]?.toLowerCase().includes(query))));
   const rows = matches.slice(0, rowLimit);
-  const max = rows.reduce((value, id) => Math.max(value, dist.final[id]), 0) || 1;
+  const max = rows.reduce((value, id) => Math.max(value, dist.raw[id], dist.final[id]), 0) || 1;
   const fragment = document.createDocumentFragment();
-  for (const id of rows) {
+  for (const [rank, id] of rows.entries()) {
     const tr = document.createElement('tr');
     const removed = dist.final[id] === 0;
     if (removed) tr.className = 'removed';
@@ -97,23 +97,32 @@ function renderTable() {
     const button = document.createElement('button');
     button.className = 'token-pick'; button.disabled = busy || autoplay || ended || ids.length >= 512;
     button.title = `Token #${id} · logit ${logits[id].toFixed(4)} · model ${formatP(dist.raw[id])} · sampling ${formatP(dist.final[id])}${removed ? ' · manual selection bypasses filtering' : ''}`;
-    const bar = document.createElement('span'); bar.className = 'token-bar'; bar.style.width = `${dist.final[id] / max * 100}%`;
-    const label = document.createElement('span'); label.className = 'token-label'; label.textContent = tokenLabel(id);
-    button.append(bar, label); button.addEventListener('click', () => choose('manual', id)); labelCell.append(button);
+    button.textContent = tokenLabel(id);
+    button.addEventListener('click', () => choose('manual', id)); labelCell.append(button);
+    const rankCell = document.createElement('td'); rankCell.textContent = rank + 1;
+    const barCell = document.createElement('td');
+    const barButton = document.createElement('button'); barButton.className = 'bar-pick'; barButton.disabled = button.disabled;
+    barButton.setAttribute('aria-label', `Choose ${tokenLabel(id)}`); barButton.title = button.title;
+    const rawBar = document.createElement('span'); rawBar.className = 'raw-bar'; rawBar.style.width = `${dist.raw[id] / max * 100}%`;
+    const finalBar = document.createElement('span'); finalBar.className = 'token-bar'; finalBar.style.width = `${dist.final[id] / max * 100}%`;
+    barButton.append(rawBar, finalBar); barButton.addEventListener('click', () => choose('manual', id)); barCell.append(barButton);
     const rawCell = document.createElement('td'); rawCell.textContent = formatP(dist.raw[id]);
-    const finalCell = document.createElement('td'); finalCell.textContent = removed ? 'Filtered out' : formatP(dist.final[id]);
-    tr.append(labelCell, rawCell, finalCell); fragment.append(tr);
+    const finalCell = document.createElement('td'); finalCell.textContent = removed ? '—' : formatP(dist.final[id]);
+    const logitCell = document.createElement('td'); logitCell.textContent = logits[id].toFixed(2);
+    tr.append(rankCell, labelCell, barCell, rawCell, finalCell, logitCell); fragment.append(tr);
   }
   if (!rows.length) {
     const tr = document.createElement('tr'), td = document.createElement('td');
-    td.colSpan = 3; td.className = 'table-empty'; td.textContent = 'No matching tokens.'; tr.append(td); fragment.append(tr);
+    td.colSpan = 6; td.className = 'table-empty'; td.textContent = 'No matches'; tr.append(td); fragment.append(tr);
   }
   ui.probabilities.replaceChildren(fragment);
   ui.more.hidden = matches.length <= rowLimit;
-  ui['table-caption'].textContent = `Showing ${rows.length} of ${matches.length.toLocaleString()}${query ? ' matches' : ' tokens'}. · means a space; ↵ means a newline. Bars are scaled to the largest displayed sampling probability.`;
+  ui['table-caption'].textContent = `${rows.length} / ${matches.length.toLocaleString()}`;
+  ui['table-caption'].title = '· space · ↵ newline · bars share a relative scale';
 }
 
 function renderSentence() {
+  ui.continuation.hidden = false;
   ui.sentence.replaceChildren();
   const promptSpan = document.createElement('span'); promptSpan.className = 'prompt-text'; promptSpan.textContent = ui.prompt.dataset.active || ''; ui.sentence.append(promptSpan);
   for (let i = 0; i < generated.length; i++) {
@@ -130,9 +139,10 @@ function renderSentence() {
   ui.sentence.title = currentText;
   const literal = (ui.prompt.dataset.active || '') + generated.map(step => vocabulary[step.id]).join('');
   ui['decoded-text'].hidden = literal === currentText;
-  ui['decoded-text'].textContent = `Decoded text (some tokens contain partial UTF-8 bytes): ${currentText}`;
-  ui['token-count'].textContent = `${promptIds.length} prompt + ${generated.length} generated · ${ids.length}/512 tokens`;
-  ui['rewind-note'].hidden = !generated.length;
+  ui['decoded-text'].textContent = currentText;
+  ui['decoded-text'].title = 'Complete UTF-8 decoding';
+  ui['token-count'].textContent = `${ids.length}/512 tokens`;
+  ui['token-count'].title = `${promptIds.length} prompt · ${generated.length} generated`;
 }
 
 function makeDrawSnapshot(selection, method) {
@@ -155,9 +165,10 @@ function makeDrawSnapshot(selection, method) {
 }
 
 function renderDraw(snapshot, animate = false) {
-  ui['draw-segments'].replaceChildren(); ui['draw-legend'].replaceChildren();
+  ui['draw-segments'].replaceChildren();
+  ui['draw-section'].hidden = !snapshot;
   if (!snapshot) {
-    ui['draw-marker'].hidden = true; ui['draw-method'].textContent = ''; ui['draw-result'].textContent = 'No token sampled yet.';
+    ui['draw-marker'].hidden = true; ui['draw-result'].textContent = '';
     return;
   }
   snapshot.segments.forEach((segment, i) => {
@@ -167,14 +178,7 @@ function renderDraw(snapshot, animate = false) {
     if (segment.id === snapshot.id) el.classList.add('selected');
     if (segment.high - segment.low > .08) el.textContent = segment.label;
     ui['draw-segments'].append(el);
-    if (i < 7 || segment.id === snapshot.id) {
-      const item = document.createElement('span'); item.className = 'legend-item';
-      const swatch = document.createElement('span'); swatch.className = 'swatch'; swatch.style.background = color;
-      const label = document.createElement('span'); label.textContent = `${segment.label} ${formatP(segment.high - segment.low)}`;
-      item.append(swatch, label); ui['draw-legend'].append(item);
-    }
   });
-  ui['draw-method'].textContent = snapshot.method === 'sample' ? 'Uniform random draw' : snapshot.method === 'greedy' ? 'Greedy selection' : 'Manual selection';
   ui['draw-marker'].hidden = snapshot.u === undefined;
   if (snapshot.u !== undefined) {
     ui['draw-number'].textContent = `u=${snapshot.u.toFixed(4)}`;
@@ -187,16 +191,19 @@ function renderDraw(snapshot, animate = false) {
   }
   const label = tokenLabel(snapshot.id);
   ui['draw-result'].textContent = snapshot.u !== undefined
-    ? `u = ${snapshot.u.toFixed(6)} falls in [${snapshot.low.toFixed(6)}, ${snapshot.high.toFixed(6)}): “${label}” · sample p = ${formatP(snapshot.probability)}`
-    : `Picked “${label}” ${snapshot.method === 'greedy' ? 'by its highest model probability' : 'manually'} · model p = ${formatP(snapshot.raw)} · sample p = ${formatP(snapshot.probability)}${snapshot.low === null ? ' (outside the sampling pool)' : ''}`;
+    ? `${label} · ${formatP(snapshot.probability)}`
+    : `${snapshot.method === 'greedy' ? 'Greedy' : 'Manual'} → ${label} · ${formatP(snapshot.probability)}`;
+  ui['draw-result'].title = snapshot.u !== undefined
+    ? `Uniform draw in [${snapshot.low.toFixed(6)}, ${snapshot.high.toFixed(6)}) · model ${formatP(snapshot.raw)} · sample ${formatP(snapshot.probability)}`
+    : `Model ${formatP(snapshot.raw)} · sample ${formatP(snapshot.probability)}${snapshot.low === null ? ' · bypassed filtering' : ''}`;
 }
 
 async function infer(payload) {
-  setStatus('Computing next-token probabilities…');
+  setStatus('Computing…');
   const result = await rpc('infer', payload);
   ids = result.ids; currentText = result.text; logits = result.logits;
   updateDistribution(); renderSentence();
-  setStatus(ended ? 'End-of-text token selected. Undo or reset to continue.' : ids.length >= 512 ? 'Context limit reached. Rewind or use a shorter prompt.' : `${Math.round(result.ms)} ms inference · ready for token ${ids.length + 1}`);
+  setStatus(ended ? 'End of text' : ids.length >= 512 ? 'Context full' : `${Math.round(result.ms)} ms`);
 }
 
 async function start() {
@@ -205,11 +212,11 @@ async function start() {
   busy = true; clearError(); syncButtons();
   try {
     if (!loaded) {
-      ui['model-status'].textContent = 'Loading DistilGPT-2…'; ui['load-progress'].hidden = false;
-      ui['download-label'].textContent = 'Loading tokenizer and model…';
+      ui['model-status'].textContent = 'Loading…'; ui['load-progress'].hidden = false;
+      ui['download-label'].textContent = 'Preparing…';
       await rpc('load'); loaded = true;
-      ui['model-status'].textContent = 'DistilGPT-2 ready · CPU / WASM';
-      ui.start.textContent = 'Use prompt'; ui['load-note'].textContent = 'Model loaded. Inference runs locally; your text stays on this device. This small model completes text rather than answering chat instructions.';
+      ui['model-status'].textContent = 'Local · ready';
+      ui.start.textContent = 'Use prompt'; ui['load-note'].textContent = 'Cached · local';
     }
     // Keep the previous state if the new prompt is rejected.
     const result = await rpc('infer', { prompt: ui.prompt.value });
@@ -217,10 +224,10 @@ async function start() {
     ui.prompt.dataset.active = result.text;
     ui['prompt-editor'].open = false;
     ended = false; lastSample = null; rowLimit = 20; renderDraw(null); updateDistribution(); renderSentence();
-    setStatus(`${Math.round(result.ms)} ms inference · ready for token ${ids.length + 1}`);
+    setStatus(`${Math.round(result.ms)} ms`);
   } catch (error) {
-    showError(error); setStatus('Could not prepare the prompt. You can retry.');
-    if (!loaded) { ui['model-status'].textContent = 'Model load failed'; ui.start.textContent = 'Retry loading model'; }
+    showError(error); setStatus('Retry available');
+    if (!loaded) { ui['model-status'].textContent = 'Load failed'; ui.start.textContent = 'Retry'; }
   } finally { busy = false; ui['load-progress'].hidden = true; syncButtons(); renderSentenceIfReady(); }
 }
 
@@ -239,16 +246,16 @@ async function choose(method = 'sample', manualId) {
     generated.push(step); ids = [...ids, selection.id]; ended = selection.id === eos; renderSentence();
     if (ended) {
       const result = await rpc('decode', { ids }); currentText = result.text;
-      setStatus('End-of-text token selected. Undo or reset to continue.');
+      setStatus('End of text');
       dist = null; logits = null;
       ui.probabilities.replaceChildren();
-      ui['distribution-summary'].textContent = 'End of text · no next-token distribution'; ui.more.hidden = true;
+      ui['distribution-summary'].textContent = 'End of text'; ui['table-caption'].textContent = ''; ui.more.hidden = true;
     } else await infer({ ids });
     return true;
   } catch (error) {
     generated.pop(); ids = oldIds; logits = oldLogits; currentText = oldText; ended = false;
     lastSample = generated.at(-1)?.snapshot || null; renderDraw(lastSample); updateDistribution(); renderSentence();
-    showError(error); setStatus('Inference failed. The previous context was restored.'); autoplay = false;
+    showError(error); setStatus('Context restored'); autoplay = false;
     return false;
   } finally { busy = false; syncButtons(); renderSentence(); }
 }
