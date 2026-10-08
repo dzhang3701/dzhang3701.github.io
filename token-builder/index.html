@@ -21,7 +21,7 @@
       <details id="prompt-editor" open>
         <summary>Prompt</summary>
         <label class="sr-only" for="prompt">Prompt text</label>
-        <textarea id="prompt" rows="2" spellcheck="false">She opened the door and</textarea>
+        <textarea id="prompt" rows="2" spellcheck="false" dir="auto">She opened the door and</textarea>
         <div class="prompt-actions">
           <button id="start" class="primary">Load & start</button>
           <select id="examples" aria-label="Example prompts">
@@ -36,8 +36,7 @@
       </details>
 
       <div id="continuation" hidden>
-        <div id="sentence" class="sentence" aria-live="polite"></div>
-        <p id="decoded-text" class="decoded-text" hidden></p>
+        <div id="sentence" class="sentence" aria-live="polite" dir="auto"></div>
       </div>
       <div class="workspace-toolbar">
         <div class="generation-actions">

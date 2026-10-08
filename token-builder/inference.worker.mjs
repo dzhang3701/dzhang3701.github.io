@@ -1,4 +1,5 @@
 import { AutoTokenizer, AutoModelForCausalLM, Tensor, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js';
+import { previewToken } from './unicode.mjs';
 
 const MODEL = 'Xenova/distilgpt2';
 const REVISION = 'a41c10485c18a64b6606729b6a082330cbd8f49e';
@@ -16,8 +17,14 @@ async function load() {
       AutoTokenizer.from_pretrained(MODEL, { revision: REVISION }),
       AutoModelForCausalLM.from_pretrained(MODEL, { revision: REVISION, dtype: 'q8', device: 'wasm', progress_callback }),
     ]);
-    const vocabulary = Array.from({ length: model.config.vocab_size }, (_, id) => tokenizer.decode([id], { skip_special_tokens: false, clean_up_tokenization_spaces: false }));
-    self.postMessage({ type: 'vocabulary', vocabulary, eos: tokenizer.eos_token_id });
+    const tokens = tokenizer.model.convert_ids_to_tokens(Array.from({ length: model.config.vocab_size }, (_, id) => id));
+    const tokenBytes = tokens.map(token => Uint8Array.from(token, char => {
+      const byte = tokenizer.decoder.byte_decoder[char];
+      if (byte === undefined) throw new Error('Unexpected byte-level token.');
+      return byte;
+    }));
+    const vocabulary = tokenBytes.map(bytes => previewToken(bytes));
+    self.postMessage({ type: 'vocabulary', vocabulary, tokenBytes, eos: tokenizer.eos_token_id });
   })();
   try { await loadPromise; } catch (error) { loadPromise = null; throw error; }
 }

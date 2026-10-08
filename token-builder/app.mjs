@@ -1,8 +1,9 @@
 import { distribution, drawToken, intervalForToken } from './sampling.mjs';
+import { decodeTokenPieces, previewToken, visibleTokenText } from './unicode.mjs';
 
 const $ = id => document.getElementById(id);
-const ui = Object.fromEntries(['start','prompt','prompt-editor','examples','model-status','load-progress','download','download-label','load-note','error','continuation','sentence','decoded-text','copy','undo','reset','token-count','sample','greedy','auto','inference-status','draw-section','draw-segments','draw-marker','draw-number','draw-result','temperature','temperature-value','top-k','top-k-value','top-p','top-p-value','distribution-summary','search','show-removed','probabilities','more','table-caption'].map(id => [id, $(id)]));
-let worker, nextRequest = 0, vocabulary = [], eos = 50256;
+const ui = Object.fromEntries(['start','prompt','prompt-editor','examples','model-status','load-progress','download','download-label','load-note','error','continuation','sentence','copy','undo','reset','token-count','sample','greedy','auto','inference-status','draw-section','draw-segments','draw-marker','draw-number','draw-result','temperature','temperature-value','top-k','top-k-value','top-p','top-p-value','distribution-summary','search','show-removed','probabilities','more','table-caption'].map(id => [id, $(id)]));
+let worker, nextRequest = 0, vocabulary = [], tokenBytes = [], pendingBytes = [], displayText = '', eos = 50256;
 let loaded = false, busy = false, autoplay = false, ended = false;
 let promptIds = [], generated = [], ids = [], currentText = '', logits = null, dist = null, lastSample = null;
 let rowLimit = 20, filterFrame;
@@ -24,7 +25,7 @@ function createWorker() {
       return;
     }
     if (data.type === 'vocabulary') {
-      vocabulary = data.vocabulary; eos = data.eos;
+      vocabulary = data.vocabulary; tokenBytes = data.tokenBytes; eos = data.eos;
       return;
     }
     const promise = pending.get(data.requestId);
@@ -49,7 +50,8 @@ function settings() { return { temperature: +ui.temperature.value, topK: +ui['to
 function formatP(p) { return p === 0 ? '0%' : p < .00001 ? `${(p * 100).toExponential(1)}%` : `${(p * 100).toFixed(p < .01 ? 3 : 2)}%`; }
 function tokenLabel(id) {
   if (id === eos) return '[end of text]';
-  return (vocabulary[id] || '').replaceAll(' ', '·').replaceAll('\n', '↵').replaceAll('\t', '⇥').replaceAll('\r', '␍') || '[empty]';
+  const text = pendingBytes.length ? previewToken(tokenBytes[id], pendingBytes) : vocabulary[id];
+  return visibleTokenText(text || '') || '[empty]';
 }
 function showError(error) { ui.error.textContent = error.message || String(error); ui.error.hidden = false; }
 function clearError() { ui.error.hidden = true; }
@@ -85,7 +87,7 @@ function updateDistribution() {
 function renderTable() {
   if (!dist) return;
   const query = ui.search.value.toLowerCase();
-  const matches = dist.order.filter(id => (ui['show-removed'].checked || dist.final[id] > 0) && (!query || (query.startsWith('#') ? String(id) === query.slice(1) : vocabulary[id]?.toLowerCase().includes(query))));
+  const matches = dist.order.filter(id => (ui['show-removed'].checked || dist.final[id] > 0) && (!query || (query.startsWith('#') ? String(id) === query.slice(1) : vocabulary[id]?.toLowerCase().includes(query) || tokenLabel(id).toLowerCase().includes(query))));
   const rows = matches.slice(0, rowLimit);
   const max = rows.reduce((value, id) => Math.max(value, dist.raw[id], dist.final[id]), 0) || 1;
   const fragment = document.createDocumentFragment();
@@ -98,6 +100,7 @@ function renderTable() {
     button.className = 'token-pick'; button.disabled = busy || autoplay || ended || ids.length >= 512;
     button.title = `Token #${id} · logit ${logits[id].toFixed(4)} · model ${formatP(dist.raw[id])} · sampling ${formatP(dist.final[id])}${removed ? ' · manual selection bypasses filtering' : ''}`;
     button.textContent = tokenLabel(id);
+    button.dir = 'auto';
     button.addEventListener('click', () => choose('manual', id)); labelCell.append(button);
     const rankCell = document.createElement('td'); rankCell.textContent = rank + 1;
     const barCell = document.createElement('td');
@@ -124,23 +127,21 @@ function renderTable() {
 function renderSentence() {
   ui.continuation.hidden = false;
   ui.sentence.replaceChildren();
-  const promptSpan = document.createElement('span'); promptSpan.className = 'prompt-text'; promptSpan.textContent = ui.prompt.dataset.active || ''; ui.sentence.append(promptSpan);
-  for (let i = 0; i < generated.length; i++) {
-    const step = generated[i];
-    const button = document.createElement('button');
-    button.textContent = step.id === eos ? ' [end of text]' : vocabulary[step.id];
-    if (step.probability < .01) button.className = 'surprising';
-    button.title = `#${step.id} · model ${formatP(step.raw)} · sampling ${formatP(step.probability)} · ${step.method} · click to rewind`;
+  const decoded = decodeTokenPieces([new TextEncoder().encode(ui.prompt.dataset.active || ''), ...generated.map(step => tokenBytes[step.id])]);
+  pendingBytes = decoded.pending; displayText = decoded.text;
+  for (const run of decoded.runs) {
+    if (run.end === 0) {
+      const span = document.createElement('span'); span.className = 'prompt-text'; span.textContent = run.text; ui.sentence.append(span); continue;
+    }
+    const index = Math.max(0, run.start - 1), steps = generated.slice(index, run.end);
+    const button = document.createElement('button'); button.textContent = run.text;
+    if (steps.some(step => step.probability < .01)) button.classList.add('surprising');
+    if (run.kind !== 'text') button.classList.add('byte-fragment');
+    button.title = `${steps.map(step => `#${step.id} · model ${formatP(step.raw)} · sample ${formatP(step.probability)}`).join('\n')}\n${run.kind === 'pending' ? 'Incomplete UTF-8 bytes · ' : run.kind === 'bytes' ? 'UTF-8 byte fragment · ' : ''}click to rewind`;
     button.disabled = busy || autoplay;
-    button.addEventListener('click', () => rewind(i)); ui.sentence.append(button);
+    button.addEventListener('click', () => rewind(index)); ui.sentence.append(button);
   }
-  // Decode the complete prefix for correct UTF-8 display; byte-fragment tokens
-  // retain their individual labels, while this title exposes the exact text.
-  ui.sentence.title = currentText;
-  const literal = (ui.prompt.dataset.active || '') + generated.map(step => vocabulary[step.id]).join('');
-  ui['decoded-text'].hidden = literal === currentText;
-  ui['decoded-text'].textContent = currentText;
-  ui['decoded-text'].title = 'Complete UTF-8 decoding';
+  ui.sentence.title = displayText;
   ui['token-count'].textContent = `${ids.length}/512 tokens`;
   ui['token-count'].title = `${promptIds.length} prompt · ${generated.length} generated`;
 }
@@ -161,7 +162,7 @@ function makeDrawSnapshot(selection, method) {
     position = selection.high;
   }
   if (position < 1 - 1e-12) segments.push({ low: position, high: 1, label: 'Other tokens' });
-  return { ...selection, method, segments, probability: dist.final[selection.id], raw: dist.raw[selection.id], s: settings() };
+  return { ...selection, method, segments, label: tokenLabel(selection.id), probability: dist.final[selection.id], raw: dist.raw[selection.id], s: settings() };
 }
 
 function renderDraw(snapshot, animate = false) {
@@ -174,6 +175,7 @@ function renderDraw(snapshot, animate = false) {
   snapshot.segments.forEach((segment, i) => {
     const color = segment.id === undefined ? '#938d83' : colors[i % colors.length];
     const el = document.createElement('div'); el.className = 'segment'; el.style.width = `${(segment.high - segment.low) * 100}%`; el.style.background = color;
+    el.dir = 'auto';
     el.title = `${segment.label} · [${segment.low.toFixed(6)}, ${segment.high.toFixed(6)}) · ${formatP(segment.high - segment.low)}`;
     if (segment.id === snapshot.id) el.classList.add('selected');
     if (segment.high - segment.low > .08) el.textContent = segment.label;
@@ -189,10 +191,12 @@ function renderDraw(snapshot, animate = false) {
       }));
     } else ui['draw-marker'].style.left = `${snapshot.u * 100}%`;
   }
-  const label = tokenLabel(snapshot.id);
-  ui['draw-result'].textContent = snapshot.u !== undefined
-    ? `${label} · ${formatP(snapshot.probability)}`
-    : `${snapshot.method === 'greedy' ? 'Greedy' : 'Manual'} → ${label} · ${formatP(snapshot.probability)}`;
+  const label = snapshot.label;
+  const labelNode = document.createElement('bdi'); labelNode.dir = 'auto'; labelNode.textContent = label;
+  ui['draw-result'].replaceChildren(
+    document.createTextNode(snapshot.u !== undefined ? '' : `${snapshot.method === 'greedy' ? 'Greedy' : 'Manual'} → `),
+    labelNode, document.createTextNode(` · ${formatP(snapshot.probability)}`),
+  );
   ui['draw-result'].title = snapshot.u !== undefined
     ? `Uniform draw in [${snapshot.low.toFixed(6)}, ${snapshot.high.toFixed(6)}) · model ${formatP(snapshot.raw)} · sample ${formatP(snapshot.probability)}`
     : `Model ${formatP(snapshot.raw)} · sample ${formatP(snapshot.probability)}${snapshot.low === null ? ' · bypassed filtering' : ''}`;
@@ -202,7 +206,7 @@ async function infer(payload) {
   setStatus('Computing…');
   const result = await rpc('infer', payload);
   ids = result.ids; currentText = result.text; logits = result.logits;
-  updateDistribution(); renderSentence();
+  renderSentence(); updateDistribution();
   setStatus(ended ? 'End of text' : ids.length >= 512 ? 'Context full' : `${Math.round(result.ms)} ms`);
 }
 
@@ -223,7 +227,7 @@ async function start() {
     ids = result.ids; promptIds = [...ids]; generated = []; currentText = result.text; logits = result.logits;
     ui.prompt.dataset.active = result.text;
     ui['prompt-editor'].open = false;
-    ended = false; lastSample = null; rowLimit = 20; renderDraw(null); updateDistribution(); renderSentence();
+    ended = false; lastSample = null; rowLimit = 20; renderDraw(null); renderSentence(); updateDistribution();
     setStatus(`${Math.round(result.ms)} ms`);
   } catch (error) {
     showError(error); setStatus('Retry available');
@@ -254,7 +258,7 @@ async function choose(method = 'sample', manualId) {
     return true;
   } catch (error) {
     generated.pop(); ids = oldIds; logits = oldLogits; currentText = oldText; ended = false;
-    lastSample = generated.at(-1)?.snapshot || null; renderDraw(lastSample); updateDistribution(); renderSentence();
+    lastSample = generated.at(-1)?.snapshot || null; renderDraw(lastSample); renderSentence(); updateDistribution();
     showError(error); setStatus('Context restored'); autoplay = false;
     return false;
   } finally { busy = false; syncButtons(); renderSentence(); }
@@ -270,7 +274,7 @@ async function rewind(index) {
     lastSample = generated.at(-1)?.snapshot || null; renderDraw(lastSample);
   } catch (error) {
     generated = previous; ids = oldIds; logits = oldLogits; currentText = oldText; ended = wasEnded;
-    if (logits) updateDistribution(); showError(error); renderSentence();
+    renderSentence(); if (logits) updateDistribution(); showError(error);
   } finally { busy = false; syncButtons(); renderSentence(); }
 }
 
@@ -297,7 +301,7 @@ ui.search.addEventListener('input', () => { rowLimit = 20; renderTable(); });
 ui['show-removed'].addEventListener('change', renderTable);
 ui.more.addEventListener('click', () => { rowLimit += 50; renderTable(); });
 ui.copy.addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(currentText); ui.copy.textContent = 'Copied'; setTimeout(() => { ui.copy.textContent = 'Copy'; }, 1200); }
+  try { await navigator.clipboard.writeText(displayText); ui.copy.textContent = 'Copied'; setTimeout(() => { ui.copy.textContent = 'Copy'; }, 1200); }
   catch { showError(new Error('Clipboard permission was unavailable. Select the text to copy it.')); }
 });
 updateDistribution();

@@ -12,6 +12,7 @@ It runs the actual quantized DistilGPT-2 model in a browser Web Worker with Tran
 - Single-token sampling, greedy choice, manual selection, and a stoppable 20-token run.
 - Inverse-CDF visualization showing the uniform random draw and selected interval. Long-tail tokens remain eligible and are split out individually if sampled.
 - Token history, click-to-rewind, undo, reset, and copy.
+- Lossless UTF-8 token bytes, context-aware character previews, and grouped Unicode/emoji runs. Incomplete or invalid byte fragments display as hex, and joined scripts retain their shaping across tokens.
 - Responsive layout and reduced-motion support.
 
 ## Run locally
@@ -25,7 +26,7 @@ python3 -m http.server 8000
 Run sampling tests with Node.js:
 
 ```sh
-node --test token-builder/sampling.test.mjs
+node --test token-builder/*.test.mjs
 ```
 
 GitHub Pages serves this folder directly; no build is needed. The 512-token context cap keeps CPU inference practical. The full prefix is recomputed for each token so rewinds and manual picks use the exact token history. The model is small and older, so its continuations are less capable than modern chat models.
