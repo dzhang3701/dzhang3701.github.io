@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Build text one token at a time with a real open language model running in your browser. Explore temperature, top-k, top-p, and the random draw behind sampling.">
+  <title>Token builder</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <main>
+    <header class="page-header">
+      <h1>Token builder</h1>
+      <a href="https://github.com/dzhang3701/dzhang3701.github.io/tree/main/token-builder">Source ↗</a>
+    </header>
+    <div class="model-line">
+      <span><a href="https://huggingface.co/distilbert/distilgpt2" target="_blank" rel="noopener">DistilGPT-2</a> · 82M parameters · runs in your browser</span>
+      <span id="model-status" role="status" aria-live="polite">Model not loaded</span>
+    </div>
+    <div id="load-progress" class="load-progress" hidden><progress id="download" max="100" value="0"></progress><span id="download-label"></span></div>
+    <p id="error" class="error" role="alert" hidden></p>
+
+    <div class="workspace">
+      <section class="text-section" aria-labelledby="text-heading">
+        <h2 id="text-heading">Build a continuation</h2>
+        <details id="prompt-editor" open>
+        <summary>Prompt & examples</summary>
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" rows="3" spellcheck="false">The best way to learn something new is to</textarea>
+        <div class="prompt-actions">
+          <button id="start" class="primary">Load model & use prompt</button>
+          <select id="examples" aria-label="Example prompts">
+            <option value="">Try an example</option>
+            <option value="The capital of France is">A factual answer</option>
+            <option value="She opened the door and">An open-ended sentence</option>
+            <option value="In a quiet forest, a small">A story</option>
+            <option value="def fibonacci(n):">Python code</option>
+          </select>
+        </div>
+        <p id="load-note" class="muted">First load downloads about 85 MB of model weights, then caches them. Your text stays on this device. This is a small completion model, not a chat assistant.</p>
+        </details>
+
+        <div class="section-toolbar"><h2>Current text</h2><button id="copy" class="text-button" disabled>Copy</button></div>
+        <div id="sentence" class="sentence" aria-live="polite"><span class="empty">Your prompt and sampled tokens will appear here.</span></div>
+        <p id="decoded-text" class="muted" hidden></p>
+        <div class="token-toolbar">
+          <span id="token-count" class="muted">0 tokens</span>
+          <button id="undo" class="text-button" disabled>Undo token</button>
+          <button id="reset" class="text-button" disabled>Reset continuation</button>
+        </div>
+        <p id="rewind-note" class="muted" hidden>Click a generated token to rewind to just before it.</p>
+
+        <div class="generation-actions">
+          <button id="sample" class="primary" disabled>Sample next token</button>
+          <button id="greedy" disabled>Pick most likely</button>
+          <button id="auto" disabled>Auto · 20 tokens</button>
+        </div>
+        <p id="inference-status" class="muted" role="status" aria-live="polite">Load the model to see its next-token distribution.</p>
+
+        <section class="draw-section" aria-labelledby="draw-heading">
+          <div class="section-toolbar"><h2 id="draw-heading">How the last sample was picked</h2><span id="draw-method" class="muted"></span></div>
+          <p id="draw-caption" class="draw-caption">Each token gets a slice of the interval [0, 1), proportional to its sampling probability. A random number selects the slice it lands in.</p>
+          <div id="draw-plot" class="draw-plot" aria-label="Cumulative sampling probability intervals">
+            <div id="draw-segments" class="segments"></div>
+            <div id="draw-marker" class="marker" hidden><span id="draw-number"></span></div>
+          </div>
+          <div class="axis"><span>0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1</span></div>
+          <p id="draw-result" class="draw-result muted">No token sampled yet.</p>
+          <div id="draw-legend" class="legend"></div>
+          <details class="explanation">
+            <summary>What am I looking at?</summary>
+            <p>The model scores all 50,257 tokens in its vocabulary. Softmax converts those logits into probabilities. Temperature changes their sharpness; top-k and top-p remove candidates and renormalize the remaining probabilities.</p>
+            <p>To sample, we draw a uniform random number u between 0 and 1. We arrange tokens from most to least probable and add their probabilities until the cumulative total passes u. That token is appended, and the model runs again on the new context.</p>
+            <p>The interval above preserves the distribution used for the <strong>last</strong> draw. The table shows the distribution for the <strong>next</strong> token. Clicking a table row picks a token manually, without a random draw.</p>
+          </details>
+        </section>
+      </section>
+
+      <section class="probability-section" aria-labelledby="probability-heading">
+        <div class="section-toolbar"><h2 id="probability-heading">Next-token probabilities</h2><span id="vocabulary-size" class="muted">50,257 candidates</span></div>
+        <div class="controls">
+          <div class="control">
+            <label for="temperature">Temperature <output id="temperature-value">1.00</output></label>
+            <input id="temperature" type="range" min="0" max="2" step="0.05" value="1">
+            <span class="control-note">Lower: sharper. Higher: flatter. Zero: greedy.</span>
+          </div>
+          <div class="control">
+            <label for="top-k">Top-k <output id="top-k-value">Off</output></label>
+            <input id="top-k" type="range" min="0" max="200" step="1" value="0">
+            <span class="control-note">Keep only the k most likely tokens. Zero: off.</span>
+          </div>
+          <div class="control">
+            <label for="top-p">Top-p <output id="top-p-value">Off</output></label>
+            <input id="top-p" type="range" min="0.01" max="1" step="0.01" value="1">
+            <span class="control-note">Keep the smallest set covering p probability mass.</span>
+          </div>
+        </div>
+        <div class="distribution-summary" id="distribution-summary">Model probabilities will appear after inference.</div>
+        <div class="table-toolbar">
+          <input id="search" type="search" placeholder="Find a token or #ID" aria-label="Search vocabulary" disabled>
+          <label class="checkbox"><input id="show-removed" type="checkbox" checked> Show filtered tokens</label>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th scope="col">Token</th><th scope="col">Model p</th><th scope="col">Sample p</th></tr></thead>
+            <tbody id="probabilities"><tr><td colspan="3" class="empty table-empty">Load the model to inspect the real distribution.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-footer"><span id="table-caption" class="muted">Bars show sampling probabilities, scaled to the largest displayed probability.</span><button id="more" class="text-button" hidden>Show more</button></div>
+      </section>
+    </div>
+    <footer>Built by David Zhang · <a href="https://lmviz.com/probabilities" target="_blank" rel="noopener">Inspired by LMVIZ</a> · <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">Transformers.js</a></footer>
+  </main>
+</body>
+</html>
